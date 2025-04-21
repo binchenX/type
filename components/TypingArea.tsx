@@ -328,18 +328,15 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
         // Process the new character
         setTypingState(prev => {
+            // Check if the character is correct
+            const expectedChar = text[prev.currentPosition];
+            const isCorrect = lastChar === expectedChar;
+
             // Copy the previous typed characters
             const newTypedChars = [...prev.typedChars];
             let newErrors = prev.errors;
             // Initialize or copy typingErrors array
             const typingErrors = prev.typingErrors ? [...prev.typingErrors] : [];
-
-            // Add the new character
-            newTypedChars.push(lastChar);
-
-            // Check if the character is correct
-            const expectedChar = text[prev.currentPosition];
-            const isCorrect = lastChar === expectedChar;
 
             if (!isCorrect) {
                 newErrors += 1;
@@ -350,12 +347,22 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                     expected: expectedChar,
                     actual: lastChar
                 });
+
+                // Update error frequency map if the function is provided
+                if (updateErrorFrequencyMap) {
+                    updateErrorFrequencyMap(expectedChar, lastChar);
+                }
+
+                // If incorrect, don't advance position but record the error
+                return {
+                    ...prev,
+                    errors: newErrors,
+                    typingErrors
+                };
             }
 
-            // Update error frequency map if the function is provided
-            if (!isCorrect && updateErrorFrequencyMap) {
-                updateErrorFrequencyMap(expectedChar, lastChar);
-            }
+            // If correct, add the character and advance position
+            newTypedChars.push(lastChar);
 
             // Check if typing is complete
             const newPosition = prev.currentPosition + 1;

@@ -9,7 +9,14 @@ import TypingArea from '@/components/TypingArea';
 import Results from '@/components/Results';
 import Stats from '@/components/Stats';
 import ThemeToggle from '@/components/ThemeToggle';
-import { loadMarkdownFile, fallbackContent } from '@/utils/fileLoader';
+import {
+    loadMarkdownFile,
+    fallbackContent,
+    saveContentToLocalStorage,
+    loadContentFromLocalStorage,
+    saveTypingStateToLocalStorage,
+    loadTypingStateFromLocalStorage
+} from '@/utils/fileLoader';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -90,24 +97,42 @@ export default function Home() {
     const [showUploadArea, setShowUploadArea] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Load quotes.md from public directory on initial component mount
+    // Load content from localStorage or public directory on initial component mount
     useEffect(() => {
         async function loadDefaultContent() {
             if (!uploadedContent) {
                 setIsLoading(true);
                 try {
-                    // Try to load the quotes.md file
-                    const content = await loadMarkdownFile('/data/quotes.md');
+                    // First try to load from localStorage
+                    const savedContent = loadContentFromLocalStorage();
 
-                    // If content was successfully loaded, use it
-                    if (content) {
-                        setUploadedContent(content);
+                    if (savedContent) {
+                        console.log('Loaded content from localStorage');
+                        setUploadedContent(savedContent);
+
+                        // Also try to load saved state
+                        const savedState = loadTypingStateFromLocalStorage();
+                        if (savedState) {
+                            // Only restore these parts of the state
+                            setCurrentItemIndex(savedState.currentItemIndex || 0);
+                            setErrorFrequencyMap(savedState.errorFrequencyMap || {});
+                            setPracticeMode(savedState.practiceMode || 'regular');
+                        }
                     } else {
-                        // Otherwise fall back to the default content
-                        setUploadedContent(fallbackContent);
+                        // If not in localStorage, try to load the quotes.md file
+                        console.log('No saved content found, loading from quotes.md');
+                        const content = await loadMarkdownFile('/data/quotes.md');
+
+                        // If content was successfully loaded, use it
+                        if (content) {
+                            setUploadedContent(content);
+                        } else {
+                            // Otherwise fall back to the default content
+                            setUploadedContent(fallbackContent);
+                        }
                     }
                 } catch (error) {
-                    console.error('Failed to load default content:', error);
+                    console.error('Failed to load content:', error);
                     // Use fallback content if there's an error
                     setUploadedContent(fallbackContent);
                 } finally {
@@ -118,6 +143,21 @@ export default function Home() {
 
         loadDefaultContent();
     }, []);
+
+    // Save state to localStorage whenever it changes
+    useEffect(() => {
+        if (uploadedContent) {
+            saveContentToLocalStorage(uploadedContent);
+
+            // Save relevant parts of state
+            const stateToSave = {
+                currentItemIndex,
+                errorFrequencyMap,
+                practiceMode
+            };
+            saveTypingStateToLocalStorage(stateToSave);
+        }
+    }, [uploadedContent, currentItemIndex, errorFrequencyMap, practiceMode]);
 
     // Process markdown content when uploaded
     useEffect(() => {
@@ -187,6 +227,8 @@ export default function Home() {
         setPracticeMode('regular');
         // Hide upload area after successful upload
         setShowUploadArea(false);
+        // Save to localStorage
+        saveContentToLocalStorage(content);
     };
 
     const toggleUploadArea = () => {
@@ -301,6 +343,33 @@ export default function Home() {
         setPracticeMode('focused');
     };
 
+    // Add a function to clear all saved data
+    const handleClearSavedData = () => {
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('typing-practice-content');
+            localStorage.removeItem('typing-practice-state');
+
+            // Reset to default content
+            loadMarkdownFile('/data/quotes.md')
+                .then(content => {
+                    if (content) {
+                        setUploadedContent(content);
+                    } else {
+                        setUploadedContent(fallbackContent);
+                    }
+                    // Reset state
+                    setCurrentItemIndex(0);
+                    setErrorFrequencyMap({});
+                    setPracticeMode('regular');
+                    setIsCompleted(false);
+                })
+                .catch(error => {
+                    console.error('Failed to load default content:', error);
+                    setUploadedContent(fallbackContent);
+                });
+        }
+    };
+
     return (
         <>
             <Head>
@@ -317,19 +386,34 @@ export default function Home() {
                     </Title>
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         {!isCompleted && parsedItems.length > 0 && (
-                            <button
-                                onClick={toggleUploadArea}
-                                style={{
-                                    background: 'transparent',
-                                    color: 'var(--primary)',
-                                    border: '1px solid var(--primary)',
-                                    padding: '0.5rem 1rem',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                {showUploadArea ? 'Cancel Upload' : 'Upload Custom Text'}
-                            </button>
+                            <>
+                                <button
+                                    onClick={toggleUploadArea}
+                                    style={{
+                                        background: 'transparent',
+                                        color: 'var(--primary)',
+                                        border: '1px solid var(--primary)',
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    {showUploadArea ? 'Cancel Upload' : 'Upload Custom Text'}
+                                </button>
+                                <button
+                                    onClick={handleClearSavedData}
+                                    style={{
+                                        background: 'transparent',
+                                        color: 'var(--text-light)',
+                                        border: '1px solid var(--border)',
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Reset to Default
+                                </button>
+                            </>
                         )}
                         <ThemeToggle />
                     </div>

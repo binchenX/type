@@ -29,4 +29,59 @@ export const fallbackContent = `
 - How much wood would a woodchuck chuck if a woodchuck could chuck wood?
 - "Code is like humor. When you have to explain it, it's bad." – Cory House
 - "The best error message is the one that never shows up." – Thomas Fuchs
-`; 
+`;
+
+/**
+ * Save content to localStorage
+ * @param content The markdown content to save
+ */
+export function saveContentToLocalStorage(content: string): void {
+    if (typeof window === 'undefined') return; // Check if running in browser
+    try {
+        localStorage.setItem('typing-practice-content', content);
+    } catch (error) {
+        console.error('Failed to save content to localStorage:', error);
+    }
+}
+
+/**
+ * Load content from localStorage
+ * @returns The saved content or null if not found
+ */
+export function loadContentFromLocalStorage(): string | null {
+    if (typeof window === 'undefined') return null; // Check if running in browser
+    try {
+        return localStorage.getItem('typing-practice-content');
+    } catch (error) {
+        console.error('Failed to load content from localStorage:', error);
+        return null;
+    }
+}
+
+/**
+ * Save typing state to localStorage
+ * @param state The current state to save
+ */
+export function saveTypingStateToLocalStorage(state: any): void {
+    if (typeof window === 'undefined') return; // Check if running in browser
+    try {
+        localStorage.setItem('typing-practice-state', JSON.stringify(state));
+    } catch (error) {
+        console.error('Failed to save state to localStorage:', error);
+    }
+}
+
+/**
+ * Load typing state from localStorage
+ * @returns The saved state or null if not found
+ */
+export function loadTypingStateFromLocalStorage(): any | null {
+    if (typeof window === 'undefined') return null; // Check if running in browser
+    try {
+        const savedState = localStorage.getItem('typing-practice-state');
+        return savedState ? JSON.parse(savedState) : null;
+    } catch (error) {
+        console.error('Failed to load state from localStorage:', error);
+        return null;
+    }
+} 
