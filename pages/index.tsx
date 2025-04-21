@@ -48,6 +48,7 @@ export default function Home() {
     });
     const [isCompleted, setIsCompleted] = useState(false);
     const [errorFrequencyMap, setErrorFrequencyMap] = useState<ErrorFrequencyMap>({});
+    const [practiceMode, setPracticeMode] = useState<'regular' | 'focused'>('regular');
 
     // Process markdown content when uploaded
     useEffect(() => {
@@ -113,6 +114,7 @@ export default function Home() {
         setUploadedContent(content);
         // Reset error frequency map when new content is uploaded
         setErrorFrequencyMap({});
+        setPracticeMode('regular');
     };
 
     const resetPractice = () => {
@@ -170,6 +172,21 @@ export default function Home() {
         });
     };
 
+    // Start a new practice session with generated items
+    const handleStartNewPractice = (items: ParsedMarkdownItem[]) => {
+        setParsedItems(items);
+        setCurrentItemIndex(0);
+        setTypingState({
+            startTime: null,
+            endTime: null,
+            currentPosition: 0,
+            errors: 0,
+            typedChars: [],
+        });
+        setIsCompleted(false);
+        setPracticeMode('focused');
+    };
+
     return (
         <>
             <Head>
@@ -181,12 +198,14 @@ export default function Home() {
 
             <Container className="container">
                 <Header>
-                    <Title>Typing Practice</Title>
+                    <Title>
+                        {practiceMode === 'focused' ? 'Focused Typing Practice' : 'Typing Practice'}
+                    </Title>
                     <ThemeToggle />
                 </Header>
 
                 <Main>
-                    {!uploadedContent ? (
+                    {!uploadedContent && practiceMode === 'regular' ? (
                         <UploadArea onUpload={handleFileUpload} />
                     ) : (
                         <>
@@ -196,6 +215,7 @@ export default function Home() {
                                         parsedItems={parsedItems}
                                         onReset={resetPractice}
                                         errorFrequencyMap={errorFrequencyMap}
+                                        onStartNewPractice={handleStartNewPractice}
                                     />
                                 </>
                             ) : (

@@ -115,23 +115,10 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUpload }) => {
     };
 
     const handleSampleClick = () => {
-        const sampleMarkdown = `# Typing Practice Sample
-    
-Welcome to the typing practice app!
-
-## Practice List
+        const sampleMarkdown = `
 - The quick brown fox jumps over the lazy dog.
 - She sells seashells by the seashore.
 - How much wood would a woodchuck chuck if a woodchuck could chuck wood?
-- Peter Piper picked a peck of pickled peppers.
-- I scream, you scream, we all scream for ice cream.
-- The early bird catches the worm.
-- A stitch in time saves nine.
-
-## Programming Quotes
-- "Any fool can write code that a computer can understand. Good programmers write code that humans can understand." – Martin Fowler
-- "First, solve the problem. Then, write the code." – John Johnson
-- "Make it work, make it right, make it fast." – Kent Beck
 - "Code is like humor. When you have to explain it, it's bad." – Cory House
 - "The best error message is the one that never shows up." – Thomas Fuchs`;
 

@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import styled from 'styled-components';
 import { ParsedMarkdownItem, ErrorFrequencyMap } from '@/types';
+import { generatePracticeText, convertPracticeSectionsToItems } from '@/services/practiceService';
 
 const Container = styled.div`
   display: flex;
@@ -37,6 +39,28 @@ const Button = styled.button`
   
   &:hover {
     background-color: var(--primary-dark);
+  }
+`;
+
+const OutlineButton = styled(Button)`
+  background-color: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  margin-left: 1rem;
+  
+  &:hover {
+    background-color: var(--primary);
+    color: white;
+  }
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  
+  @media (max-width: 600px) {
+    flex-direction: column;
   }
 `;
 
@@ -132,13 +156,65 @@ const ErrorCount = styled.span`
   color: var(--text-light);
 `;
 
+const LoadingSpinner = styled.div`
+  border: 3px solid var(--background);
+  border-top: 3px solid var(--primary);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
+const PracticeGenerationSection = styled.div`
+  width: 100%;
+  max-width: 700px;
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: var(--background);
+  text-align: left;
+`;
+
+const PracticeItemList = styled.ul`
+  list-style: decimal inside;
+  padding: 0;
+  margin: 1rem 0;
+`;
+
+const PracticeItem = styled.li`
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+  background-color: var(--background-light);
+  font-family: var(--font-mono);
+`;
+
 interface ResultsProps {
     parsedItems: ParsedMarkdownItem[];
     onReset: () => void;
     errorFrequencyMap: ErrorFrequencyMap;
+    onStartNewPractice?: (items: ParsedMarkdownItem[]) => void;
 }
 
-const Results: React.FC<ResultsProps> = ({ parsedItems, onReset, errorFrequencyMap }) => {
+const Results: React.FC<ResultsProps> = ({
+    parsedItems,
+    onReset,
+    errorFrequencyMap,
+    onStartNewPractice
+}) => {
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [generatedPractice, setGeneratedPractice] = useState<string[]>([]);
+    const [generationError, setGenerationError] = useState<string | null>(null);
+
     // Calculate total character count
     const totalChars = parsedItems.reduce((sum, item) => sum + item.content.length, 0);
 
@@ -156,6 +232,34 @@ const Results: React.FC<ResultsProps> = ({ parsedItems, onReset, errorFrequencyM
         }))
         .sort((a, b) => b.errorRate - a.errorRate || b.errors - a.errors) // Sort by error rate then by error count
         .slice(0, 15); // Limit to top 15 problematic characters
+
+    // Generate practice text based on error statistics
+    const handleGeneratePractice = async () => {
+        setIsGenerating(true);
+        setGenerationError(null);
+
+        try {
+            const response = await generatePracticeText(errorFrequencyMap);
+
+            if (response.success) {
+                setGeneratedPractice(response.practiceSections);
+            } else {
+                setGenerationError(response.error || 'Failed to generate practice text');
+            }
+        } catch (error) {
+            setGenerationError(error instanceof Error ? error.message : 'Unknown error');
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    // Start a new practice session with the generated text
+    const handleStartPractice = () => {
+        if (onStartNewPractice && generatedPractice.length > 0) {
+            const practiceItems = convertPracticeSectionsToItems(generatedPractice);
+            onStartNewPractice(practiceItems);
+        }
+    };
 
     return (
         <Container>
@@ -199,12 +303,59 @@ const Results: React.FC<ResultsProps> = ({ parsedItems, onReset, errorFrequencyM
                             </ErrorItem>
                         ))}
                     </ErrorList>
+
+                    <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+                        <Button
+                            onClick={handleGeneratePractice}
+                            disabled={isGenerating}
+                        >
+                            {isGenerating ? (
+                                <>
+                                    <LoadingSpinner /> Generating Practice Text...
+                                </>
+                            ) : (
+                                "Generate Focused Practice Text"
+                            )}
+                        </Button>
+                    </div>
                 </ErrorStatsSection>
             )}
 
-            <div>
+            {generatedPractice.length > 0 && (
+                <PracticeGenerationSection>
+                    <h3>Generated Practice Text</h3>
+                    <p>Here are custom practice sentences focused on your problematic characters: {errorItems.map(item => item.char === ' ' ? 'SPACE' : item.char).join(', ')}</p>
+
+                    <PracticeItemList>
+                        {generatedPractice.map((text, index) => (
+                            <PracticeItem key={index}>{text}</PracticeItem>
+                        ))}
+                    </PracticeItemList>
+
+                    {onStartNewPractice && (
+                        <div style={{ textAlign: 'center' }}>
+                            <Button onClick={handleStartPractice}>
+                                Start Practicing These Sentences
+                            </Button>
+                        </div>
+                    )}
+                </PracticeGenerationSection>
+            )}
+
+            {generationError && (
+                <div style={{ color: 'var(--error)', marginTop: '1rem' }}>
+                    Error: {generationError}
+                </div>
+            )}
+
+            <ButtonGroup>
                 <Button onClick={onReset}>Practice Again</Button>
-            </div>
+                {generatedPractice.length === 0 && errorItems.length > 0 && !isGenerating && (
+                    <OutlineButton onClick={handleGeneratePractice}>
+                        Generate Practice Text
+                    </OutlineButton>
+                )}
+            </ButtonGroup>
         </Container>
     );
 };
