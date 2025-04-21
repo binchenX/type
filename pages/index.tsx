@@ -9,6 +9,7 @@ import TypingArea from '@/components/TypingArea';
 import Results from '@/components/Results';
 import Stats from '@/components/Stats';
 import ThemeToggle from '@/components/ThemeToggle';
+import { loadMarkdownFile, fallbackContent } from '@/utils/fileLoader';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -87,19 +88,35 @@ export default function Home() {
     const [errorFrequencyMap, setErrorFrequencyMap] = useState<ErrorFrequencyMap>({});
     const [practiceMode, setPracticeMode] = useState<'regular' | 'focused'>('regular');
     const [showUploadArea, setShowUploadArea] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Load sample text on initial component mount
+    // Load quotes.md from public directory on initial component mount
     useEffect(() => {
-        if (!uploadedContent) {
-            const sampleMarkdown = `
-- The quick brown fox jumps over the lazy dog.
-- She sells seashells by the seashore.
-- How much wood would a woodchuck chuck if a woodchuck could chuck wood?
-- "Code is like humor. When you have to explain it, it's bad." – Cory House
-- "The best error message is the one that never shows up." – Thomas Fuchs`;
+        async function loadDefaultContent() {
+            if (!uploadedContent) {
+                setIsLoading(true);
+                try {
+                    // Try to load the quotes.md file
+                    const content = await loadMarkdownFile('/data/quotes.md');
 
-            setUploadedContent(sampleMarkdown);
+                    // If content was successfully loaded, use it
+                    if (content) {
+                        setUploadedContent(content);
+                    } else {
+                        // Otherwise fall back to the default content
+                        setUploadedContent(fallbackContent);
+                    }
+                } catch (error) {
+                    console.error('Failed to load default content:', error);
+                    // Use fallback content if there's an error
+                    setUploadedContent(fallbackContent);
+                } finally {
+                    setIsLoading(false);
+                }
+            }
         }
+
+        loadDefaultContent();
     }, []);
 
     // Process markdown content when uploaded
@@ -319,7 +336,11 @@ export default function Home() {
                 </Header>
 
                 <Main>
-                    {showUploadArea ? (
+                    {isLoading ? (
+                        <div style={{ textAlign: 'center', padding: '2rem' }}>
+                            <p>Loading typing content...</p>
+                        </div>
+                    ) : showUploadArea ? (
                         <UploadArea onUpload={handleFileUpload} />
                     ) : (
                         <>

@@ -5,12 +5,35 @@ A web application for practicing typing skills using custom markdown texts. Uplo
 ## Features
 
 - Upload markdown files for typing practice
+- Built-in quotes collection loaded from quotes.md file
 - Parse markdown content including headings, paragraphs, and list items
 - Real-time statistics: WPM (Words Per Minute), accuracy, and time
 - Progress tracking across multiple text sections
 - Light and dark mode support
 - Responsive design for desktop and mobile
+- Keyboard shortcuts for navigation (Alt + arrow keys)
 - **AI-powered practice text generation** based on your typing errors
+
+## Configuration
+
+### Custom Quotes Collection
+
+The app comes with a default collection of quotes in `public/data/quotes.md`. You can customize this file to include your own collection of quotes or practice text.
+
+The format should follow standard markdown, with sections denoted by headings (`#`, `##`, etc.) and list items starting with `-` or `*`:
+
+```markdown
+# Section Title
+
+- List item 1
+- List item 2
+
+## Subsection
+
+- Another list item
+```
+
+The app will parse this file and present each list item as a separate typing practice item.
 
 ## Getting Started
 

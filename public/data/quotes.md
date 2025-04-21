@@ -1,0 +1,10 @@
+- The only way to do great work is to love what you do. - Steve Jobs
+- Life is what happens when you're busy making other plans. - John Lennon
+- The future belongs to those who believe in the beauty of their dreams. - Eleanor Roosevelt
+- Success is not final, failure is not fatal: It is the courage to continue that counts. - Winston Churchill
+- Believe you can and you're halfway there. - Theodore Roosevelt
+- It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. - Jane Austen
+- All that we see or seem is but a dream within a dream. - Edgar Allan Poe
+- It was the best of times, it was the worst of times. - Charles Dickens
+- To be, or not to be, that is the question. - William Shakespeare
+- The only impossible journey is the one you never begin. - Tony Robbins 

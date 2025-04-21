@@ -1,5 +1,6 @@
 import { useState, useRef, ChangeEvent } from 'react';
 import styled from 'styled-components';
+import { loadMarkdownFile } from '@/utils/fileLoader';
 
 const UploadContainer = styled.div`
   display: flex;
@@ -65,12 +66,27 @@ const SampleButton = styled.button`
   }
 `;
 
+// Add a new styled button for loading quotes
+const QuotesButton = styled(SampleButton)`
+  background-color: var(--background);
+  color: var(--text);
+  border: 1px solid var(--border);
+  margin-left: 0.5rem;
+  
+  &:hover {
+    background-color: var(--background-light);
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+`;
+
 interface UploadAreaProps {
     onUpload: (content: string) => void;
 }
 
 const UploadArea: React.FC<UploadAreaProps> = ({ onUpload }) => {
     const [isDragging, setIsDragging] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -125,6 +141,25 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUpload }) => {
         onUpload(sampleMarkdown);
     };
 
+    const handleQuotesClick = async () => {
+        setIsLoading(true);
+        try {
+            const content = await loadMarkdownFile('/data/quotes.md');
+            if (content) {
+                onUpload(content);
+            } else {
+                // Fall back to sample if quotes file can't be loaded
+                handleSampleClick();
+            }
+        } catch (error) {
+            console.error('Failed to load quotes:', error);
+            // Fall back to sample if there's an error
+            handleSampleClick();
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <UploadContainer>
             <h2>Upload a Markdown File</h2>
@@ -151,9 +186,14 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUpload }) => {
 
             <div>
                 <p>Don't have a markdown file?</p>
-                <SampleButton onClick={handleSampleClick}>
-                    Use Sample Text
-                </SampleButton>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <SampleButton onClick={handleSampleClick}>
+                        Use Sample Text
+                    </SampleButton>
+                    <QuotesButton onClick={handleQuotesClick} disabled={isLoading}>
+                        {isLoading ? 'Loading Quotes...' : 'Load Quotes Collection'}
+                    </QuotesButton>
+                </div>
             </div>
         </UploadContainer>
     );
