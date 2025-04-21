@@ -169,6 +169,8 @@ interface TypingAreaProps {
     setTypingState: React.Dispatch<React.SetStateAction<TypingState>>;
     onComplete: () => void;
     updateErrorFrequencyMap?: (expectedChar: string, typedChar: string) => void;
+    onSkipForward?: () => void;
+    onSkipBackward?: () => void;
 }
 
 // LiveErrorStats component to display errors in real-time
@@ -232,7 +234,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     typingState,
     setTypingState,
     onComplete,
-    updateErrorFrequencyMap
+    updateErrorFrequencyMap,
+    onSkipForward,
+    onSkipBackward
 }) => {
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -245,15 +249,58 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         }
     }, [text]); // Re-focus when text changes
 
-    // Handle keyboard events
+    // Add global keyboard event listener for navigation
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Only respond to Alt+Arrow combinations
+            if (!e.altKey) return;
+
+            // Right arrow key to skip to next item
+            if (e.key === 'ArrowRight' && onSkipForward) {
+                e.preventDefault();
+                onSkipForward();
+            }
+
+            // Left arrow key to go to previous item
+            if (e.key === 'ArrowLeft' && onSkipBackward) {
+                e.preventDefault();
+                onSkipBackward();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [onSkipForward, onSkipBackward]);
+
+    // Handle keyboard events within textarea
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         // Prevent default browser behavior for certain keys
         if (e.key === 'Tab') {
             e.preventDefault();
         }
 
+        // Handle Alt+Arrow navigation
+        if (e.altKey) {
+            // Skip to next item with Alt+Right arrow
+            if (e.key === 'ArrowRight' && onSkipForward) {
+                e.preventDefault();
+                onSkipForward();
+                return;
+            }
+
+            // Go to previous item with Alt+Left arrow
+            if (e.key === 'ArrowLeft' && onSkipBackward) {
+                e.preventDefault();
+                onSkipBackward();
+                return;
+            }
+        }
+
         if (e.ctrlKey || e.metaKey) {
-            return; // Ignore command keys
+            return; // Ignore other command keys
         }
 
         // Initialize start time on first keypress

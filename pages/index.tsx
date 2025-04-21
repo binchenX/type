@@ -170,6 +170,25 @@ export default function Home() {
         }
     };
 
+    const moveToPreviousItem = () => {
+        if (currentItemIndex > 0) {
+            setCurrentItemIndex(prev => prev - 1);
+            setTypingState({
+                startTime: null,
+                endTime: null,
+                currentPosition: 0,
+                errors: 0,
+                typedChars: [],
+                typingErrors: [],
+            });
+        }
+    };
+
+    const skipCurrentItem = () => {
+        // Just move to the next item without marking current as completed
+        moveToNextItem();
+    };
+
     const getCurrentContent = (): string => {
         if (!parsedItems.length || currentItemIndex >= parsedItems.length) return '';
         return parsedItems[currentItemIndex].content;
@@ -287,13 +306,27 @@ export default function Home() {
                                         currentText={getCurrentContent()}
                                     />
 
-                                    <TypingArea
-                                        text={getCurrentContent()}
-                                        typingState={typingState}
-                                        setTypingState={setTypingState}
-                                        onComplete={moveToNextItem}
-                                        updateErrorFrequencyMap={updateErrorFrequencyMap}
-                                    />
+                                    <div style={{ position: 'relative' }}>
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '0',
+                                            right: '0',
+                                            fontSize: '0.8rem',
+                                            color: 'var(--text-light)',
+                                            padding: '0.5rem'
+                                        }}>
+                                            Tip: Press Alt+← to go back, Alt+→ to skip
+                                        </div>
+                                        <TypingArea
+                                            text={getCurrentContent()}
+                                            typingState={typingState}
+                                            setTypingState={setTypingState}
+                                            onComplete={moveToNextItem}
+                                            updateErrorFrequencyMap={updateErrorFrequencyMap}
+                                            onSkipForward={skipCurrentItem}
+                                            onSkipBackward={moveToPreviousItem}
+                                        />
+                                    </div>
                                 </>
                             )}
                         </>
