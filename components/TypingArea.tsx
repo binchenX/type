@@ -281,51 +281,37 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
         // Process the new character
         setTypingState(prev => {
-            // Get the expected character at the current position
-            const expectedChar = text[prev.currentPosition];
-
-            // Check if the character is correct
-            const isCorrect = lastChar === expectedChar;
-
-            // Initialize or copy typingErrors array
-            const typingErrors = prev.typingErrors ? [...prev.typingErrors] : [];
-
             // Copy the previous typed characters
             const newTypedChars = [...prev.typedChars];
             let newErrors = prev.errors;
-            let newPosition = prev.currentPosition;
+            // Initialize or copy typingErrors array
+            const typingErrors = prev.typingErrors ? [...prev.typingErrors] : [];
 
-            // Only advance position and add to typed chars if correct
-            if (isCorrect) {
-                // Add the new character and advance position
-                newTypedChars.push(lastChar);
-                newPosition += 1;
-            } else {
-                // Increment errors counter
+            // Add the new character
+            newTypedChars.push(lastChar);
+
+            // Check if the character is correct
+            const expectedChar = text[prev.currentPosition];
+            const isCorrect = lastChar === expectedChar;
+
+            if (!isCorrect) {
                 newErrors += 1;
-
-                // Capture context around the error
-                const startContext = Math.max(0, prev.currentPosition - 10);
-                const endContext = Math.min(text.length, prev.currentPosition + 10);
-                const context = text.slice(startContext, endContext);
 
                 // Record detailed information about this error
                 typingErrors.push({
                     index: prev.currentPosition,
-                    position: prev.currentPosition + 1, // 1-indexed for display
                     expected: expectedChar,
-                    actual: lastChar,
-                    context,
-                    timestamp: Date.now()
+                    actual: lastChar
                 });
+            }
 
-                // Update error frequency map if the function is provided
-                if (updateErrorFrequencyMap) {
-                    updateErrorFrequencyMap(expectedChar, lastChar);
-                }
+            // Update error frequency map if the function is provided
+            if (!isCorrect && updateErrorFrequencyMap) {
+                updateErrorFrequencyMap(expectedChar, lastChar);
             }
 
             // Check if typing is complete
+            const newPosition = prev.currentPosition + 1;
             const isComplete = newPosition >= text.length;
 
             // Set end time if complete

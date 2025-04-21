@@ -14,9 +14,6 @@ export type TypingState = {
         index: number;
         expected: string;
         actual: string;
-        position?: number;  // 1-indexed position for display
-        context?: string;   // surrounding text for context
-        timestamp?: number; // when the error occurred
     }>;
 };
 
