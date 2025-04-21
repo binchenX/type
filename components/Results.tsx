@@ -121,6 +121,12 @@ const ErrorItem = styled.div`
   border-radius: 4px;
   background-color: var(--background);
   border: 1px solid var(--border);
+  position: relative;
+  cursor: pointer;
+  
+  &:hover .incorrect-replacements {
+    display: block;
+  }
 `;
 
 const CharDisplay = styled.span<{ errorRate: number }>`
@@ -154,6 +160,63 @@ const ErrorRate = styled.span`
 const ErrorCount = styled.span`
   font-size: 0.75rem;
   color: var(--text-light);
+`;
+
+const IncorrectReplacements = styled.div`
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 200px;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.75rem;
+  z-index: 10;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  
+  &:before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 15px;
+    width: 12px;
+    height: 12px;
+    background-color: var(--background);
+    border-left: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    transform: rotate(45deg);
+  }
+`;
+
+const ReplacementItem = styled.div`
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--border);
+  
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const ReplacementChar = styled.span`
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--error);
+`;
+
+const ReplacementCount = styled.span`
+  color: var(--text-light);
+`;
+
+const TooltipLabel = styled.span`
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin-bottom: 0.5rem;
+  display: block;
 `;
 
 const LoadingSpinner = styled.div`
@@ -198,22 +261,92 @@ const PracticeItem = styled.li`
   font-family: var(--font-mono);
 `;
 
+const DetailedErrorsSection = styled.div`
+  width: 100%;
+  max-width: 600px;
+  margin-top: 2rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: var(--background);
+`;
+
+const DetailedErrorsTitle = styled.h4`
+  color: var(--text);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const ToggleButton = styled.button`
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+const ErrorsTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+`;
+
+const TableHead = styled.thead`
+  background-color: var(--background-light);
+  
+  th {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+`;
+
+const TableBody = styled.tbody`
+  tr:nth-child(even) {
+    background-color: var(--background-light);
+  }
+  
+  td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+`;
+
+const CharCell = styled.td`
+  font-family: var(--font-mono);
+  font-weight: 600;
+`;
+
 interface ResultsProps {
     parsedItems: ParsedMarkdownItem[];
     onReset: () => void;
     errorFrequencyMap: ErrorFrequencyMap;
     onStartNewPractice?: (items: ParsedMarkdownItem[]) => void;
+    typingErrors?: Array<{
+        index: number;
+        expected: string;
+        actual: string;
+    }>;
 }
 
 const Results: React.FC<ResultsProps> = ({
     parsedItems,
     onReset,
     errorFrequencyMap,
-    onStartNewPractice
+    onStartNewPractice,
+    typingErrors = []
 }) => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedPractice, setGeneratedPractice] = useState<string[]>([]);
     const [generationError, setGenerationError] = useState<string | null>(null);
+    const [showDetailedErrors, setShowDetailedErrors] = useState(false);
 
     // Calculate total character count
     const totalChars = parsedItems.reduce((sum, item) => sum + item.content.length, 0);
@@ -228,7 +361,8 @@ const Results: React.FC<ResultsProps> = ({
             char,
             attempts: stats.attempts,
             errors: stats.errors,
-            errorRate: stats.errors / stats.attempts
+            errorRate: stats.errors / stats.attempts,
+            incorrectReplacements: stats.incorrectReplacements || {}
         }))
         .sort((a, b) => b.errorRate - a.errorRate || b.errors - a.errors) // Sort by error rate then by error count
         .slice(0, 15); // Limit to top 15 problematic characters
@@ -300,6 +434,23 @@ const Results: React.FC<ResultsProps> = ({
                                     <ErrorRate>{Math.round(item.errorRate * 100)}% error rate</ErrorRate>
                                     <ErrorCount>{item.errors} of {item.attempts} attempts</ErrorCount>
                                 </ErrorStats>
+
+                                {/* Show incorrect replacements in a tooltip */}
+                                {Object.keys(item.incorrectReplacements).length > 0 && (
+                                    <IncorrectReplacements className="incorrect-replacements">
+                                        <TooltipLabel>You typed instead:</TooltipLabel>
+                                        {Object.entries(item.incorrectReplacements)
+                                            .sort(([_, countA], [__, countB]) => countB - countA)
+                                            .map(([replacementChar, count]) => (
+                                                <ReplacementItem key={replacementChar}>
+                                                    <ReplacementChar>
+                                                        {replacementChar === ' ' ? '⎵' : replacementChar}
+                                                    </ReplacementChar>
+                                                    <ReplacementCount>× {count}</ReplacementCount>
+                                                </ReplacementItem>
+                                            ))}
+                                    </IncorrectReplacements>
+                                )}
                             </ErrorItem>
                         ))}
                     </ErrorList>
@@ -346,6 +497,40 @@ const Results: React.FC<ResultsProps> = ({
                 <div style={{ color: 'var(--error)', marginTop: '1rem' }}>
                     Error: {generationError}
                 </div>
+            )}
+
+            {typingErrors && typingErrors.length > 0 && (
+                <DetailedErrorsSection>
+                    <DetailedErrorsTitle>
+                        Detailed Typing Errors
+                        <ToggleButton onClick={() => setShowDetailedErrors(!showDetailedErrors)}>
+                            {showDetailedErrors ? 'Hide' : 'Show'} Details
+                        </ToggleButton>
+                    </DetailedErrorsTitle>
+
+                    {showDetailedErrors && (
+                        <ErrorsTable>
+                            <TableHead>
+                                <tr>
+                                    <th>Expected</th>
+                                    <th>You Typed</th>
+                                </tr>
+                            </TableHead>
+                            <TableBody>
+                                {typingErrors.map((error, index) => (
+                                    <tr key={index}>
+                                        <CharCell>
+                                            {error.expected === ' ' ? '⎵' : error.expected}
+                                        </CharCell>
+                                        <CharCell>
+                                            {error.actual === ' ' ? '⎵' : error.actual}
+                                        </CharCell>
+                                    </tr>
+                                ))}
+                            </TableBody>
+                        </ErrorsTable>
+                    )}
+                </DetailedErrorsSection>
             )}
 
             <ButtonGroup>

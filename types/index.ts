@@ -10,6 +10,11 @@ export type TypingState = {
     currentPosition: number;
     errors: number;
     typedChars: string[];
+    typingErrors?: Array<{
+        index: number;
+        expected: string;
+        actual: string;
+    }>;
 };
 
 export type TypingStats = {
@@ -23,5 +28,9 @@ export type ErrorFrequencyMap = {
     [char: string]: {
         attempts: number;
         errors: number;
+        // Map of incorrect characters that were typed instead
+        incorrectReplacements: {
+            [replacementChar: string]: number;
+        };
     };
 }; 

@@ -45,6 +45,7 @@ export default function Home() {
         currentPosition: 0,
         errors: 0,
         typedChars: [],
+        typingErrors: [],
     });
     const [isCompleted, setIsCompleted] = useState(false);
     const [errorFrequencyMap, setErrorFrequencyMap] = useState<ErrorFrequencyMap>({});
@@ -105,6 +106,7 @@ export default function Home() {
                 currentPosition: 0,
                 errors: 0,
                 typedChars: [],
+                typingErrors: [],
             });
             setIsCompleted(false);
         }
@@ -125,6 +127,7 @@ export default function Home() {
             currentPosition: 0,
             errors: 0,
             typedChars: [],
+            typingErrors: [],
         });
         setIsCompleted(false);
         // Don't reset error frequency map to maintain history across sessions
@@ -139,6 +142,7 @@ export default function Home() {
                 currentPosition: 0,
                 errors: 0,
                 typedChars: [],
+                typingErrors: [],
             });
         } else {
             setIsCompleted(true);
@@ -157,15 +161,31 @@ export default function Home() {
 
             // Initialize character data if it doesn't exist
             if (!newMap[expectedChar]) {
-                newMap[expectedChar] = { attempts: 0, errors: 0 };
+                newMap[expectedChar] = {
+                    attempts: 0,
+                    errors: 0,
+                    incorrectReplacements: {}
+                };
             }
 
             // Increment attempts
             newMap[expectedChar].attempts += 1;
 
-            // Increment errors if character was typed incorrectly
+            // If character was typed incorrectly
             if (expectedChar !== typedChar) {
+                // Increment errors
                 newMap[expectedChar].errors += 1;
+
+                // Track the incorrect replacement
+                if (!newMap[expectedChar].incorrectReplacements) {
+                    newMap[expectedChar].incorrectReplacements = {};
+                }
+
+                if (!newMap[expectedChar].incorrectReplacements[typedChar]) {
+                    newMap[expectedChar].incorrectReplacements[typedChar] = 0;
+                }
+
+                newMap[expectedChar].incorrectReplacements[typedChar] += 1;
             }
 
             return newMap;
@@ -182,6 +202,7 @@ export default function Home() {
             currentPosition: 0,
             errors: 0,
             typedChars: [],
+            typingErrors: [],
         });
         setIsCompleted(false);
         setPracticeMode('focused');
@@ -216,6 +237,7 @@ export default function Home() {
                                         onReset={resetPractice}
                                         errorFrequencyMap={errorFrequencyMap}
                                         onStartNewPractice={handleStartNewPractice}
+                                        typingErrors={typingState.typingErrors}
                                     />
                                 </>
                             ) : (

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { TypingState } from '@/types';
 
@@ -20,7 +20,10 @@ const TextDisplay = styled.div`
   min-height: 150px;
 `;
 
-const Character = styled.span<{ status?: 'correct' | 'incorrect' | 'current' | 'untyped' }>`
+const Character = styled.span<{
+    status?: 'correct' | 'incorrect' | 'current' | 'untyped';
+    hasTooltip?: boolean;
+}>`
   position: relative;
   color: ${props => {
         switch (props.status) {
@@ -40,6 +43,40 @@ const Character = styled.span<{ status?: 'correct' | 'incorrect' | 'current' | '
   
   text-decoration: ${props => props.status === 'incorrect' ? 'underline' : 'none'};
   text-decoration-color: var(--error);
+  
+  ${props => props.hasTooltip && `
+    cursor: pointer;
+
+    &:hover .tooltip {
+      display: block;
+    }
+  `}
+`;
+
+const ErrorTooltip = styled.span`
+  position: absolute;
+  display: none;
+  background-color: var(--error);
+  color: white;
+  font-size: 0.75rem;
+  padding: 2px 5px;
+  border-radius: 2px;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 10;
+  
+  &:after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -4px;
+    border-width: 4px;
+    border-style: solid;
+    border-color: var(--error) transparent transparent transparent;
+  }
 `;
 
 const InputArea = styled.textarea`
@@ -47,6 +84,59 @@ const InputArea = styled.textarea`
   left: -9999px;
   top: -9999px;
   opacity: 0;
+`;
+
+const LiveStatsContainer = styled.div`
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: var(--background-light);
+  border-radius: 8px;
+  font-size: 0.875rem;
+`;
+
+const LiveStatsHeader = styled.h4`
+  margin-bottom: 0.75rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const LiveErrorsList = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+`;
+
+const LiveErrorItem = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+`;
+
+const ExpectedChar = styled.span`
+  font-family: var(--font-mono);
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  background-color: var(--error);
+  color: white;
+  border-radius: 4px;
+  margin-right: 0.25rem;
+`;
+
+const ActualChar = styled.span`
+  font-family: var(--font-mono);
+  padding: 0.25rem 0.5rem;
+  background-color: var(--background-light);
+  border-radius: 4px;
+`;
+
+const ArrowIcon = styled.span`
+  margin: 0 0.25rem;
+  color: var(--text-light);
 `;
 
 interface TypingAreaProps {
@@ -57,6 +147,62 @@ interface TypingAreaProps {
     updateErrorFrequencyMap?: (expectedChar: string, typedChar: string) => void;
 }
 
+// LiveErrorStats component to display errors in real-time
+const LiveErrorStats = ({
+    typingErrors,
+    showStats
+}: {
+    typingErrors: Array<{ index: number; expected: string; actual: string }>;
+    showStats: boolean;
+}) => {
+    if (!showStats || typingErrors.length === 0) return null;
+
+    // Group errors by expected character and count occurrences
+    const errorMap = typingErrors.reduce((acc, error) => {
+        const key = `${error.expected}:${error.actual}`;
+        if (!acc[key]) {
+            acc[key] = {
+                expected: error.expected,
+                actual: error.actual,
+                count: 0
+            };
+        }
+        acc[key].count++;
+        return acc;
+    }, {} as Record<string, { expected: string; actual: string; count: number }>);
+
+    // Convert to array and sort by count
+    const errorItems = Object.values(errorMap)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8); // Show max 8 most frequent errors
+
+    return (
+        <LiveStatsContainer>
+            <LiveStatsHeader>
+                Live Typing Errors
+            </LiveStatsHeader>
+            <LiveErrorsList>
+                {errorItems.map((item, index) => (
+                    <LiveErrorItem key={index}>
+                        <ExpectedChar>
+                            {item.expected === ' ' ? '⎵' : item.expected}
+                        </ExpectedChar>
+                        <ArrowIcon>→</ArrowIcon>
+                        <ActualChar>
+                            {item.actual === ' ' ? '⎵' : item.actual}
+                        </ActualChar>
+                        {item.count > 1 && (
+                            <span style={{ marginLeft: '0.5rem', color: 'var(--text-light)' }}>
+                                ×{item.count}
+                            </span>
+                        )}
+                    </LiveErrorItem>
+                ))}
+            </LiveErrorsList>
+        </LiveStatsContainer>
+    );
+};
+
 const TypingArea: React.FC<TypingAreaProps> = ({
     text,
     typingState,
@@ -66,6 +212,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 }) => {
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const [showLiveStats, setShowLiveStats] = useState(true);
 
     // Focus input when component mounts
     useEffect(() => {
@@ -113,6 +260,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             // Copy the previous typed characters
             const newTypedChars = [...prev.typedChars];
             let newErrors = prev.errors;
+            // Initialize or copy typingErrors array
+            const typingErrors = prev.typingErrors ? [...prev.typingErrors] : [];
 
             // Add the new character
             newTypedChars.push(lastChar);
@@ -123,10 +272,17 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
             if (!isCorrect) {
                 newErrors += 1;
+
+                // Record detailed information about this error
+                typingErrors.push({
+                    index: prev.currentPosition,
+                    expected: expectedChar,
+                    actual: lastChar
+                });
             }
 
             // Update error frequency map if the function is provided
-            if (updateErrorFrequencyMap) {
+            if (!isCorrect && updateErrorFrequencyMap) {
                 updateErrorFrequencyMap(expectedChar, lastChar);
             }
 
@@ -148,6 +304,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                 currentPosition: newPosition,
                 typedChars: newTypedChars,
                 errors: newErrors,
+                typingErrors,
                 endTime: endTime
             };
         });
@@ -163,10 +320,13 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     const renderText = () => {
         return text.split('').map((char, index) => {
             let status: 'correct' | 'incorrect' | 'current' | 'untyped';
+            let typedChar = typingState.typedChars[index];
+            let isIncorrect = false;
 
             if (index < typingState.currentPosition) {
                 // Character has been typed
-                status = typingState.typedChars[index] === char ? 'correct' : 'incorrect';
+                isIncorrect = typedChar !== char;
+                status = isIncorrect ? 'incorrect' : 'correct';
             } else if (index === typingState.currentPosition) {
                 // Current character
                 status = 'current';
@@ -176,8 +336,13 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             }
 
             return (
-                <Character key={index} status={status}>
+                <Character key={index} status={status} hasTooltip={isIncorrect}>
                     {char}
+                    {isIncorrect && (
+                        <ErrorTooltip className="tooltip">
+                            You typed: {typedChar === ' ' ? '⎵' : typedChar}
+                        </ErrorTooltip>
+                    )}
                 </Character>
             );
         });
@@ -189,6 +354,15 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             <TextDisplay>
                 {renderText()}
             </TextDisplay>
+
+            {/* Add live error statistics */}
+            {typingState.typingErrors && typingState.typingErrors.length > 0 && (
+                <LiveErrorStats
+                    typingErrors={typingState.typingErrors}
+                    showStats={showLiveStats}
+                />
+            )}
+
             <InputArea
                 ref={inputRef}
                 onKeyDown={handleKeyDown}
