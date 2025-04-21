@@ -35,6 +35,42 @@ const Main = styled.main`
   gap: 2rem;
 `;
 
+// New styled component for keyboard shortcuts tips
+const KeyboardTips = styled.div`
+  position: absolute;
+  top: -10px;
+  right: 0;
+  background-color: var(--primary);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transform: translateY(-50%);
+  z-index: 10;
+  
+  &:after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    right: 15px;
+    width: 10px;
+    height: 10px;
+    background-color: var(--primary);
+    transform: rotate(45deg);
+  }
+  
+  kbd {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    padding: 1px 5px;
+    margin: 0 2px;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+`;
+
 export default function Home() {
     const [uploadedContent, setUploadedContent] = useState<string | null>(null);
     const [parsedItems, setParsedItems] = useState<ParsedMarkdownItem[]>([]);
@@ -307,16 +343,9 @@ export default function Home() {
                                     />
 
                                     <div style={{ position: 'relative' }}>
-                                        <div style={{
-                                            position: 'absolute',
-                                            top: '0',
-                                            right: '0',
-                                            fontSize: '0.8rem',
-                                            color: 'var(--text-light)',
-                                            padding: '0.5rem'
-                                        }}>
-                                            Tip: Press Alt+← to go back, Alt+→ to skip
-                                        </div>
+                                        <KeyboardTips>
+                                            Press <kbd>Alt</kbd>+<kbd>←</kbd> to go back, <kbd>Alt</kbd>+<kbd>→</kbd> to skip
+                                        </KeyboardTips>
                                         <TypingArea
                                             text={getCurrentContent()}
                                             typingState={typingState}
