@@ -119,8 +119,8 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUpload }) => {
 - The quick brown fox jumps over the lazy dog.
 - She sells seashells by the seashore.
 - How much wood would a woodchuck chuck if a woodchuck could chuck wood?
-- "Code is like humor. When you have to explain it, it's bad." – Cory House
-- "The best error message is the one that never shows up." – Thomas Fuchs`;
+- "Code is like humor. When you have to explain it, it's bad." - Cory House
+- "The best error message is the one that never shows up." - Thomas Fuchs`;
 
         onUpload(sampleMarkdown);
     };
@@ -128,7 +128,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUpload }) => {
     return (
         <UploadContainer>
             <h2>Upload a Markdown File</h2>
-            <p>Upload a markdown file to use as typing practice text. The app will parse list items and other content.</p>
+            <p>Upload a markdown file with list items.</p>
 
             <DropArea
                 className={isDragging ? 'dragging' : ''}
