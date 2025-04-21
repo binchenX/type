@@ -162,8 +162,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUpload }) => {
 
     return (
         <UploadContainer>
-            <h2>Upload a Markdown File</h2>
-            <p>Upload a markdown file with list items.</p>
+            <h2>Upload a Markdown File with list items</h2>
 
             <DropArea
                 className={isDragging ? 'dragging' : ''}
@@ -184,17 +183,6 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUpload }) => {
                 />
             </DropArea>
 
-            <div>
-                <p>Don't have a markdown file?</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
-                    <SampleButton onClick={handleSampleClick}>
-                        Use Sample Text
-                    </SampleButton>
-                    <QuotesButton onClick={handleQuotesClick} disabled={isLoading}>
-                        {isLoading ? 'Loading Quotes...' : 'Load Quotes Collection'}
-                    </QuotesButton>
-                </div>
-            </div>
         </UploadContainer>
     );
 };
