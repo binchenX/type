@@ -50,6 +50,21 @@ export default function Home() {
     const [isCompleted, setIsCompleted] = useState(false);
     const [errorFrequencyMap, setErrorFrequencyMap] = useState<ErrorFrequencyMap>({});
     const [practiceMode, setPracticeMode] = useState<'regular' | 'focused'>('regular');
+    const [showUploadArea, setShowUploadArea] = useState(false);
+
+    // Load sample text on initial component mount
+    useEffect(() => {
+        if (!uploadedContent) {
+            const sampleMarkdown = `
+- The quick brown fox jumps over the lazy dog.
+- She sells seashells by the seashore.
+- How much wood would a woodchuck chuck if a woodchuck could chuck wood?
+- "Code is like humor. When you have to explain it, it's bad." – Cory House
+- "The best error message is the one that never shows up." – Thomas Fuchs`;
+
+            setUploadedContent(sampleMarkdown);
+        }
+    }, []);
 
     // Process markdown content when uploaded
     useEffect(() => {
@@ -117,6 +132,12 @@ export default function Home() {
         // Reset error frequency map when new content is uploaded
         setErrorFrequencyMap({});
         setPracticeMode('regular');
+        // Hide upload area after successful upload
+        setShowUploadArea(false);
+    };
+
+    const toggleUploadArea = () => {
+        setShowUploadArea(prev => !prev);
     };
 
     const resetPractice = () => {
@@ -222,11 +243,28 @@ export default function Home() {
                     <Title>
                         {practiceMode === 'focused' ? 'Focused Typing Practice' : 'Typing Practice'}
                     </Title>
-                    <ThemeToggle />
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        {!isCompleted && parsedItems.length > 0 && (
+                            <button
+                                onClick={toggleUploadArea}
+                                style={{
+                                    background: 'transparent',
+                                    color: 'var(--primary)',
+                                    border: '1px solid var(--primary)',
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {showUploadArea ? 'Cancel Upload' : 'Upload Custom Text'}
+                            </button>
+                        )}
+                        <ThemeToggle />
+                    </div>
                 </Header>
 
                 <Main>
-                    {!uploadedContent && practiceMode === 'regular' ? (
+                    {showUploadArea ? (
                         <UploadArea onUpload={handleFileUpload} />
                     ) : (
                         <>
@@ -237,7 +275,7 @@ export default function Home() {
                                         onReset={resetPractice}
                                         errorFrequencyMap={errorFrequencyMap}
                                         onStartNewPractice={handleStartNewPractice}
-                                        typingErrors={typingState.typingErrors}
+                                        typingErrors={typingState.typingErrors || []}
                                     />
                                 </>
                             ) : (
