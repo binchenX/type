@@ -26,6 +26,11 @@ interface GeneratePracticeResponse {
     error?: string;
 }
 
+// Detect if this is running in a production environment
+function isProduction(): boolean {
+    return process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+}
+
 export default async function handler(
     req: NextApiRequest,
     res: NextApiResponse<GeneratePracticeResponse>
@@ -42,6 +47,11 @@ export default async function handler(
 
     try {
         const { errorFrequencyMap } = req.body as { errorFrequencyMap: ErrorFrequencyMap };
+
+        // If in production, return fallback practice text without attempting to use LLM
+        if (isProduction()) {
+            return res.status(200).json(getFallbackPracticeText(errorFrequencyMap));
+        }
 
         // Process the error data to create a prompt for the LLM
         const problematicChars = Object.entries(errorFrequencyMap)
@@ -87,15 +97,21 @@ Pack my box with five dozen liquor jugs.
 Sphinx of black quartz, judge my vow.
 `;
 
-        // Call the LLM based on configuration
-        const practiceSections = await callLLM(prompt, ollamaConfig);
+        try {
+            // Call the LLM based on configuration
+            const practiceSections = await callLLM(prompt, ollamaConfig);
 
-        return res.status(200).json({
-            success: true,
-            text: `Here are practice focused on characters: ${problematicChars.map(item => item.char === ' ' ? 'SPACE' : item.char).join(', ')}`,
-            practiceSections,
-            prompt, // Include the prompt for debugging/transparency
-        });
+            return res.status(200).json({
+                success: true,
+                text: `Here are practice focused on characters: ${problematicChars.map(item => item.char === ' ' ? 'SPACE' : item.char).join(', ')}`,
+                practiceSections,
+                prompt, // Include the prompt for debugging/transparency
+            });
+        } catch (error) {
+            console.error('Error calling LLM:', error);
+            // Return fallback practice if LLM call fails
+            return res.status(200).json(getFallbackPracticeText(errorFrequencyMap));
+        }
     } catch (error) {
         console.error('Error generating practice text:', error);
         return res.status(500).json({
@@ -105,6 +121,78 @@ Sphinx of black quartz, judge my vow.
             error: error instanceof Error ? error.message : 'Unknown error',
         });
     }
+}
+
+/**
+ * Generate fallback practice text
+ */
+function getFallbackPracticeText(errorFrequencyMap: ErrorFrequencyMap): GeneratePracticeResponse {
+    // Extract top problematic characters
+    const problematicChars = Object.entries(errorFrequencyMap)
+        .filter(([_, stats]) => stats.attempts > 0 && stats.errors > 0)
+        .sort((a, b) => (b[1].errors / b[1].attempts) - (a[1].errors / a[1].attempts))
+        .slice(0, 5)
+        .map(([char, _]) => char);
+
+    if (problematicChars.length === 0) {
+        return {
+            success: true,
+            text: "Great job! You don't have any specific characters to practice. Here's a general typing text to keep your skills sharp.",
+            practiceSections: [
+                "The quick brown fox jumps over the lazy dog.",
+                "Amazingly few discotheques provide jukeboxes.",
+                "How vexingly quick daft zebras jump!",
+                "Pack my box with five dozen liquor jugs.",
+                "Sphinx of black quartz, judge my vow.",
+            ],
+        };
+    }
+
+    // Generate sentences that include the problematic characters
+    const sentences = [];
+
+    if (problematicChars.includes(',')) {
+        sentences.push("Carefully, quietly, slowly, move forward with grace.");
+    }
+
+    if (problematicChars.includes('.')) {
+        sentences.push("Type each word. Then each sentence. Practice makes perfect.");
+    }
+
+    if (problematicChars.includes(' ')) {
+        sentences.push("Space between words improves readability and clarity.");
+    }
+
+    if (problematicChars.includes('s')) {
+        sentences.push("She sells seashells by the seashore in summer season.");
+    }
+
+    if (problematicChars.includes('t')) {
+        sentences.push("The talented turtle tried to type ten terrific texts.");
+    }
+
+    // Add generic sentences if we don't have enough
+    const genericSentences = [
+        "The five boxing wizards jump quickly over the lazy dog.",
+        "How vexingly quick daft zebras jump when motivated.",
+        "Pack my box with five dozen quality jugs, please.",
+        "Amazingly few discotheques provide jukeboxes nowadays.",
+        "The job requires extra pluck and zeal from every young wage earner."
+    ];
+
+    while (sentences.length < 5) {
+        const randomIndex = Math.floor(Math.random() * genericSentences.length);
+        const sentence = genericSentences[randomIndex];
+        if (!sentences.includes(sentence)) {
+            sentences.push(sentence);
+        }
+    }
+
+    return {
+        success: true,
+        text: `Here are practice sentences focused on your problematic characters: ${problematicChars.map(c => c === ' ' ? 'SPACE' : c).join(', ')}`,
+        practiceSections: sentences.slice(0, 5),
+    };
 }
 
 /**
@@ -137,78 +225,18 @@ async function callLLM(prompt: string, config: LLMConfig): Promise<string[]> {
         // This assumes the LLM properly formats its response with one sentence per line
         const practiceItems = generatedText
             .split('\n')
-            .map(line => line.trim())
-            .filter(line => line.length > 0)
+            .map((line: string) => line.trim())
+            .filter((line: string) => line.length > 0)
             .slice(0, 5); // Limit to 5 items
 
         // If we got no valid practice items, return fallback
         if (practiceItems.length === 0) {
-            return getFallbackPractice(prompt);
+            throw new Error('No valid practice items generated');
         }
 
         return practiceItems;
     } catch (error) {
         console.error('Error calling LLM:', error);
-        return getFallbackPractice(prompt);
+        throw error; // Rethrow to be handled by the caller
     }
-}
-
-/**
- * Generate fallback practice text if LLM call fails
- */
-function getFallbackPractice(prompt: string): string[] {
-    // Extract problematic characters from the prompt
-    const charRegex = /following characters.*?:\s*([^.]+)/i;
-    const match = prompt.match(charRegex);
-    const charsList = match ? match[1] : '';
-
-    const chars = charsList
-        .split(',')
-        .map(item => {
-            const charMatch = item.match(/(SPACE|\S)\s*\((\d+)%/);
-            return charMatch ? (charMatch[1] === 'SPACE' ? ' ' : charMatch[1]) : '';
-        })
-        .filter(Boolean);
-
-    // Generate sentences that include the problematic characters
-    const sentences = [];
-
-    if (chars.includes(',')) {
-        sentences.push("Carefully, quietly, slowly, move forward with grace.");
-    }
-
-    if (chars.includes('.')) {
-        sentences.push("Type each word. Then each sentence. Practice makes perfect.");
-    }
-
-    if (chars.includes(' ')) {
-        sentences.push("Space between words improves readability and clarity.");
-    }
-
-    if (chars.includes('s')) {
-        sentences.push("She sells seashells by the seashore in summer season.");
-    }
-
-    if (chars.includes('t')) {
-        sentences.push("The talented turtle tried to type ten terrific texts.");
-    }
-
-    // Add generic sentences if we don't have enough
-    const genericSentences = [
-        "The five boxing wizards jump quickly over the lazy dog.",
-        "How vexingly quick daft zebras jump when motivated.",
-        "Pack my box with five dozen quality jugs, please.",
-        "Amazingly few discotheques provide jukeboxes nowadays.",
-        "The job requires extra pluck and zeal from every young wage earner."
-    ];
-
-    while (sentences.length < 5) {
-        const randomIndex = Math.floor(Math.random() * genericSentences.length);
-        const sentence = genericSentences[randomIndex];
-        if (!sentences.includes(sentence)) {
-            sentences.push(sentence);
-        }
-    }
-
-    return sentences.slice(0, 5);
 } 

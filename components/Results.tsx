@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { ParsedMarkdownItem, ErrorFrequencyMap } from '@/types';
-import { generatePracticeText, convertPracticeSectionsToItems } from '@/services/practiceService';
+import { generatePracticeText, convertPracticeSectionsToItems, isLocalEnvironment } from '@/services/practiceService';
 
 const Container = styled.div`
   display: flex;
@@ -324,6 +324,18 @@ const CharCell = styled.td`
   font-weight: 600;
 `;
 
+const EnvironmentBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+  color: white;
+  background-color: ${props => props.theme === 'local' ? 'var(--success)' : 'var(--text-light)'};
+`;
+
 interface ResultsProps {
     parsedItems: ParsedMarkdownItem[];
     onReset: () => void;
@@ -347,6 +359,12 @@ const Results: React.FC<ResultsProps> = ({
     const [generatedPractice, setGeneratedPractice] = useState<string[]>([]);
     const [generationError, setGenerationError] = useState<string | null>(null);
     const [showDetailedErrors, setShowDetailedErrors] = useState(false);
+    const [isLocal, setIsLocal] = useState(false);
+
+    // Check environment on mount
+    useEffect(() => {
+        setIsLocal(isLocalEnvironment());
+    }, []);
 
     // Calculate total character count
     const totalChars = parsedItems.reduce((sum, item) => sum + item.content.length, 0);
@@ -421,7 +439,14 @@ const Results: React.FC<ResultsProps> = ({
 
             {errorItems.length > 0 && (
                 <ErrorStatsSection>
-                    <ErrorStatsHeader>Characters You Need to Practice</ErrorStatsHeader>
+                    <ErrorStatsHeader>
+                        Characters You Need to Practice
+                        {isLocal ? (
+                            <EnvironmentBadge theme="local">LLM-Enabled</EnvironmentBadge>
+                        ) : (
+                            <EnvironmentBadge theme="remote">LLM Disabled</EnvironmentBadge>
+                        )}
+                    </ErrorStatsHeader>
                     <p>Here are the characters you had the most trouble with, sorted by error rate:</p>
 
                     <ErrorList>
@@ -455,27 +480,40 @@ const Results: React.FC<ResultsProps> = ({
                         ))}
                     </ErrorList>
 
-                    <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-                        <Button
-                            onClick={handleGeneratePractice}
-                            disabled={isGenerating}
-                        >
-                            {isGenerating ? (
-                                <>
-                                    <LoadingSpinner /> Generating Practice Text...
-                                </>
-                            ) : (
-                                "Generate Focused Practice Text"
-                            )}
-                        </Button>
-                    </div>
+                    {isLocal && (
+                        <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+                            <Button
+                                onClick={handleGeneratePractice}
+                                disabled={isGenerating}
+                            >
+                                {isGenerating ? (
+                                    <>
+                                        <LoadingSpinner /> Generating Practice Text...
+                                    </>
+                                ) : (
+                                    "Generate AI-Powered Practice Text"
+                                )}
+                            </Button>
+                        </div>
+                    )}
+
+                    {!isLocal && (
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-light)', margin: '2rem 0 0', textAlign: 'center' }}>
+                            The AI-powered practice generation is only available when running locally.
+                            <br />
+                            Please run the app locally to access this feature.
+                        </p>
+                    )}
                 </ErrorStatsSection>
             )}
 
             {generatedPractice.length > 0 && (
                 <PracticeGenerationSection>
                     <h3>Generated Practice Text</h3>
-                    <p>Here are custom practice sentences focused on your problematic characters: {errorItems.map(item => item.char === ' ' ? 'SPACE' : item.char).join(', ')}</p>
+                    <p>
+                        Here are {!isLocal ? "basic" : "custom AI-generated"} practice sentences
+                        focused on your problematic characters: {errorItems.map(item => item.char === ' ' ? 'SPACE' : item.char).join(', ')}
+                    </p>
 
                     <PracticeItemList>
                         {generatedPractice.map((text, index) => (
@@ -535,7 +573,7 @@ const Results: React.FC<ResultsProps> = ({
 
             <ButtonGroup>
                 <Button onClick={onReset}>Practice Again</Button>
-                {generatedPractice.length === 0 && errorItems.length > 0 && !isGenerating && (
+                {generatedPractice.length === 0 && errorItems.length > 0 && !isGenerating && isLocal && (
                     <OutlineButton onClick={handleGeneratePractice}>
                         Generate Practice Text
                     </OutlineButton>
