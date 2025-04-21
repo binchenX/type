@@ -1,10 +1,20 @@
-- The only way to do great work is to love what you do. - Steve Jobs
-- Life is what happens when you're busy making other plans. - John Lennon
-- The future belongs to those who believe in the beauty of their dreams. - Eleanor Roosevelt
-- Success is not final, failure is not fatal: It is the courage to continue that counts. - Winston Churchill
-- Believe you can and you're halfway there. - Theodore Roosevelt
-- It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. - Jane Austen
-- All that we see or seem is but a dream within a dream. - Edgar Allan Poe
-- It was the best of times, it was the worst of times. - Charles Dickens
-- To be, or not to be, that is the question. - William Shakespeare
-- The only impossible journey is the one you never begin. - Tony Robbins 
+- The greatest and most important problems of life are all fundamentally insoluble. They can never be solved but only outgrown.
+- What you resist, persists.
+- We cannot change anything until we accept it. Condemnation does not liberate, it oppresses.
+- The privilege of a lifetime is to become who you truly are.
+- Don't be overheard complaining... Not even to yourself.
+- Receive without pride, let go without attachment.
+- Treat whatever happens as wholly natural; not novel or hard to deal with, but familiar and easily handled.
+- No man is free until he is master of himself.
+- Circumstances don't make the man, they only reveal him to himself.
+- Freedom is the only worthy goal in life. It is won by disregarding things that lie beyond our control.
+- People are not disturbed by things, but by the view they take of them.
+- Difficulties strengthen the mind, as labor does the body.
+- If a man knows not to which port he sails, no wind is favorable.
+- What need is there to weep over part of life? The whole of it calls for tears.
+- If you really want to escape the things that harass you, what you're needing is not to be in a different place but to be a different person.
+- To find yourself, think for yourself.
+- Anyone can find the switch after the lights are on.
+- The ideal man bears the accidents of life with dignity and grace, making the best of circumstances.
+- I fear not the man who has practiced ten thousand kicks once, but I fear the man who has practiced one kick ten thousand times.
+- Any person capable of angering you becomes your master.
