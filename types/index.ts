@@ -16,4 +16,12 @@ export type TypingStats = {
     wpm: number;
     accuracy: number;
     time: number;
+};
+
+// Map to track frequency of errors by character
+export type ErrorFrequencyMap = {
+    [char: string]: {
+        attempts: number;
+        errors: number;
+    };
 }; 

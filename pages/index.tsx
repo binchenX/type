@@ -3,7 +3,7 @@ import Head from 'next/head';
 import styled from 'styled-components';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ParsedMarkdownItem, TypingState } from '@/types';
+import { ParsedMarkdownItem, TypingState, ErrorFrequencyMap } from '@/types';
 import UploadArea from '@/components/UploadArea';
 import TypingArea from '@/components/TypingArea';
 import Results from '@/components/Results';
@@ -47,6 +47,7 @@ export default function Home() {
         typedChars: [],
     });
     const [isCompleted, setIsCompleted] = useState(false);
+    const [errorFrequencyMap, setErrorFrequencyMap] = useState<ErrorFrequencyMap>({});
 
     // Process markdown content when uploaded
     useEffect(() => {
@@ -110,6 +111,8 @@ export default function Home() {
 
     const handleFileUpload = (content: string) => {
         setUploadedContent(content);
+        // Reset error frequency map when new content is uploaded
+        setErrorFrequencyMap({});
     };
 
     const resetPractice = () => {
@@ -122,6 +125,7 @@ export default function Home() {
             typedChars: [],
         });
         setIsCompleted(false);
+        // Don't reset error frequency map to maintain history across sessions
     };
 
     const moveToNextItem = () => {
@@ -142,6 +146,28 @@ export default function Home() {
     const getCurrentContent = (): string => {
         if (!parsedItems.length || currentItemIndex >= parsedItems.length) return '';
         return parsedItems[currentItemIndex].content;
+    };
+
+    // Function to update error frequency map
+    const updateErrorFrequencyMap = (expectedChar: string, typedChar: string) => {
+        setErrorFrequencyMap(prevMap => {
+            const newMap = { ...prevMap };
+
+            // Initialize character data if it doesn't exist
+            if (!newMap[expectedChar]) {
+                newMap[expectedChar] = { attempts: 0, errors: 0 };
+            }
+
+            // Increment attempts
+            newMap[expectedChar].attempts += 1;
+
+            // Increment errors if character was typed incorrectly
+            if (expectedChar !== typedChar) {
+                newMap[expectedChar].errors += 1;
+            }
+
+            return newMap;
+        });
     };
 
     return (
@@ -165,10 +191,13 @@ export default function Home() {
                     ) : (
                         <>
                             {isCompleted ? (
-                                <Results
-                                    parsedItems={parsedItems}
-                                    onReset={resetPractice}
-                                />
+                                <>
+                                    <Results
+                                        parsedItems={parsedItems}
+                                        onReset={resetPractice}
+                                        errorFrequencyMap={errorFrequencyMap}
+                                    />
+                                </>
                             ) : (
                                 <>
                                     <Stats
@@ -183,6 +212,7 @@ export default function Home() {
                                         typingState={typingState}
                                         setTypingState={setTypingState}
                                         onComplete={moveToNextItem}
+                                        updateErrorFrequencyMap={updateErrorFrequencyMap}
                                     />
                                 </>
                             )}

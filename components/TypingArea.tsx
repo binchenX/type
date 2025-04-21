@@ -54,13 +54,15 @@ interface TypingAreaProps {
     typingState: TypingState;
     setTypingState: React.Dispatch<React.SetStateAction<TypingState>>;
     onComplete: () => void;
+    updateErrorFrequencyMap?: (expectedChar: string, typedChar: string) => void;
 }
 
 const TypingArea: React.FC<TypingAreaProps> = ({
     text,
     typingState,
     setTypingState,
-    onComplete
+    onComplete,
+    updateErrorFrequencyMap
 }) => {
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -116,8 +118,16 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             newTypedChars.push(lastChar);
 
             // Check if the character is correct
-            if (lastChar !== text[prev.currentPosition]) {
+            const expectedChar = text[prev.currentPosition];
+            const isCorrect = lastChar === expectedChar;
+
+            if (!isCorrect) {
                 newErrors += 1;
+            }
+
+            // Update error frequency map if the function is provided
+            if (updateErrorFrequencyMap) {
+                updateErrorFrequencyMap(expectedChar, lastChar);
             }
 
             // Check if typing is complete

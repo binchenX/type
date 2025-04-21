@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { ParsedMarkdownItem } from '@/types';
+import { ParsedMarkdownItem, ErrorFrequencyMap } from '@/types';
 
 const Container = styled.div`
   display: flex;
@@ -69,17 +69,93 @@ const StatLabel = styled.div`
   color: var(--text-light);
 `;
 
+const ErrorStatsSection = styled.div`
+  width: 100%;
+  max-width: 600px;
+  margin-top: 2rem;
+  text-align: left;
+`;
+
+const ErrorStatsHeader = styled.h3`
+  color: var(--text);
+  margin-bottom: 1rem;
+  text-align: center;
+`;
+
+const ErrorList = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+`;
+
+const ErrorItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+`;
+
+const CharDisplay = styled.span<{ errorRate: number }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 4px;
+  background-color: ${props => {
+        if (props.errorRate >= 0.5) return 'var(--error)';
+        if (props.errorRate >= 0.25) return 'orange';
+        return 'var(--success)';
+    }};
+  color: white;
+  font-family: var(--font-mono);
+  font-weight: 600;
+`;
+
+const ErrorStats = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+const ErrorRate = styled.span`
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+`;
+
+const ErrorCount = styled.span`
+  font-size: 0.75rem;
+  color: var(--text-light);
+`;
+
 interface ResultsProps {
     parsedItems: ParsedMarkdownItem[];
     onReset: () => void;
+    errorFrequencyMap: ErrorFrequencyMap;
 }
 
-const Results: React.FC<ResultsProps> = ({ parsedItems, onReset }) => {
+const Results: React.FC<ResultsProps> = ({ parsedItems, onReset, errorFrequencyMap }) => {
     // Calculate total character count
     const totalChars = parsedItems.reduce((sum, item) => sum + item.content.length, 0);
 
     // Calculate total word count (roughly 5 chars = 1 word)
     const totalWords = Math.round(totalChars / 5);
+
+    // Prepare error frequency data for display
+    const errorItems = Object.entries(errorFrequencyMap)
+        .filter(([_, stats]) => stats.attempts > 0) // Only show characters that were attempted
+        .map(([char, stats]) => ({
+            char,
+            attempts: stats.attempts,
+            errors: stats.errors,
+            errorRate: stats.errors / stats.attempts
+        }))
+        .sort((a, b) => b.errorRate - a.errorRate || b.errors - a.errors) // Sort by error rate then by error count
+        .slice(0, 15); // Limit to top 15 problematic characters
 
     return (
         <Container>
@@ -104,6 +180,27 @@ const Results: React.FC<ResultsProps> = ({ parsedItems, onReset }) => {
                     <StatLabel>Characters</StatLabel>
                 </StatItem>
             </StatsContainer>
+
+            {errorItems.length > 0 && (
+                <ErrorStatsSection>
+                    <ErrorStatsHeader>Characters You Need to Practice</ErrorStatsHeader>
+                    <p>Here are the characters you had the most trouble with, sorted by error rate:</p>
+
+                    <ErrorList>
+                        {errorItems.map(item => (
+                            <ErrorItem key={item.char}>
+                                <CharDisplay errorRate={item.errorRate}>
+                                    {item.char === ' ' ? '⎵' : item.char}
+                                </CharDisplay>
+                                <ErrorStats>
+                                    <ErrorRate>{Math.round(item.errorRate * 100)}% error rate</ErrorRate>
+                                    <ErrorCount>{item.errors} of {item.attempts} attempts</ErrorCount>
+                                </ErrorStats>
+                            </ErrorItem>
+                        ))}
+                    </ErrorList>
+                </ErrorStatsSection>
+            )}
 
             <div>
                 <Button onClick={onReset}>Practice Again</Button>
