@@ -38,11 +38,35 @@ const Character = styled.span<{
         }
     }};
   
-  background-color: ${props => props.status === 'current' ? 'var(--primary)' : 'transparent'};
-  border-radius: ${props => props.status === 'current' ? '2px' : '0'};
+  /* Remove blue background for current character */
+  background-color: transparent;
   
-  text-decoration: ${props => props.status === 'incorrect' ? 'underline' : 'none'};
-  text-decoration-color: var(--error);
+  /* Different text decorations based on status */
+  text-decoration: ${props => {
+        switch (props.status) {
+            case 'incorrect':
+                return 'underline';
+            case 'current':
+                return 'underline';
+            default:
+                return 'none';
+        }
+    }};
+  
+  /* Different text decoration colors */
+  text-decoration-color: ${props => {
+        switch (props.status) {
+            case 'incorrect':
+                return 'var(--error)';
+            case 'current':
+                return 'var(--text)'; /* Black underline for current character */
+            default:
+                return 'transparent';
+        }
+    }};
+  
+  /* Make the current character's underline thicker */
+  text-decoration-thickness: ${props => props.status === 'current' ? '2px' : '1px'};
   
   ${props => props.hasTooltip && `
     cursor: pointer;
