@@ -344,6 +344,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                 updateErrorFrequencyMap(expectedChar, lastChar);
             }
 
+            // Always add the character to typedChars array, whether correct or not
+            newTypedChars.push(lastChar);
+
             if (!isCorrect) {
                 // Increment error count
                 newErrors += 1;
@@ -354,20 +357,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                     expected: expectedChar,
                     actual: lastChar
                 });
-
-                // If incorrect, don't advance position but record the error
-                return {
-                    ...prev,
-                    errors: newErrors,
-                    typingErrors,
-                    lastIncorrectChar: lastChar
-                };
             }
 
-            // If correct, add the character, advance position, and clear lastIncorrectChar
-            newTypedChars.push(lastChar);
-
-            // Check if typing is complete
+            // Always advance to the next position, regardless of correctness
             const newPosition = prev.currentPosition + 1;
             const isComplete = newPosition >= text.length;
 
@@ -387,7 +379,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                 errors: newErrors,
                 typingErrors,
                 endTime: endTime,
-                lastIncorrectChar: undefined // Clear the last incorrect character
+                // We no longer need lastIncorrectChar since we're not blocking progression
+                lastIncorrectChar: undefined
             };
         });
     };
@@ -416,15 +409,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                     status = 'correct';
                 }
             } else if (index === typingState.currentPosition) {
-                // Current character position
-                if (typingState.lastIncorrectChar) {
-                    // If there was an incorrect character typed at this position
-                    status = 'incorrect';
-                    displayTooltip = true;
-                    tooltipChar = typingState.lastIncorrectChar;
-                } else {
-                    status = 'current';
-                }
+                // Current character position - always show as current
+                status = 'current';
             } else {
                 // Characters not yet typed
                 status = 'untyped';
