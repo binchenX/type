@@ -360,6 +360,8 @@ const Results: React.FC<ResultsProps> = ({
     const [generationError, setGenerationError] = useState<string | null>(null);
     const [showDetailedErrors, setShowDetailedErrors] = useState(false);
     const [isLocal, setIsLocal] = useState(false);
+    const [prompt, setPrompt] = useState<string | null>(null);
+    const [showDebug, setShowDebug] = useState(false);
 
     // Check environment on mount
     useEffect(() => {
@@ -395,6 +397,9 @@ const Results: React.FC<ResultsProps> = ({
 
             if (response.success) {
                 setGeneratedPractice(response.practiceSections);
+                if (response.prompt) {
+                    setPrompt(response.prompt);
+                }
             } else {
                 setGenerationError(response.error || 'Failed to generate practice text');
             }
@@ -521,8 +526,44 @@ const Results: React.FC<ResultsProps> = ({
                         ))}
                     </PracticeItemList>
 
+                    {prompt && (
+                        <div style={{ marginTop: '2rem', width: '100%', maxWidth: '800px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                <h3 style={{ margin: 0 }}>AI Debug Info</h3>
+                                <button
+                                    onClick={() => setShowDebug(!showDebug)}
+                                    style={{
+                                        background: 'transparent',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '4px',
+                                        padding: '0.25rem 0.5rem',
+                                        cursor: 'pointer',
+                                        color: 'var(--text-light)'
+                                    }}
+                                >
+                                    {showDebug ? 'Hide Prompt' : 'Show Prompt'}
+                                </button>
+                            </div>
+
+                            {showDebug && (
+                                <div style={{
+                                    padding: '1rem',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: '8px',
+                                    backgroundColor: 'var(--background)',
+                                    fontFamily: 'var(--font-mono)',
+                                    fontSize: '0.875rem',
+                                    whiteSpace: 'pre-wrap',
+                                    overflowX: 'auto'
+                                }}>
+                                    {prompt}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {onStartNewPractice && (
-                        <div style={{ textAlign: 'center' }}>
+                        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
                             <Button onClick={handleStartPractice}>
                                 Start Practicing These Sentences
                             </Button>

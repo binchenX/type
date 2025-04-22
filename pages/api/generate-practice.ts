@@ -80,21 +80,17 @@ export default async function handler(
 
         // Create prompt for the LLM
         const charsList = problematicChars
-            .map((item) => `${item.char === ' ' ? 'SPACE' : item.char} (${item.errorRate}% error rate)`)
+            .map((item) => item.char === ' ' ? 'SPACE' : item.char)
             .join(', ');
 
-        const prompt = `Generate 5 short sentences or phrases for typing practice. 
-Each line should be a separate practice item.
-These practice items should heavily feature the following characters that the user struggles with: ${charsList}.
-Make the sentences interesting, memorable and progressively more challenging. Use famous quotes and phrases.
-Each sentence should be between 40-60 characters.
-Don't include explanations, and don't include the index. just the practice text. Example:
-
-The quick brown fox jumps over the lazy dog.
-Amazingly few discotheques provide jukeboxes.
-How vexingly quick daft zebras jump!
-Pack my box with five dozen liquor jugs.
-Sphinx of black quartz, judge my vow.
+        const prompt = `Generate 5 unique and progressively harder typing practice sentences.  
+Each sentence must:  
+- Be 40 to 60 characters long.  
+- Appear on a separate line.  
+- Heavily feature the characters: ${charsList} 
+- Be interesting, fun, and memorable.  
+- Do NOT include any explanation or numbering.  
+Only output the sentences.
 `;
 
         try {
