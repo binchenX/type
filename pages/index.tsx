@@ -245,8 +245,9 @@ export default function Home() {
             typedChars: [],
             typingErrors: [],
         });
+        // Reset error frequency map to start fresh for each practice session
+        setErrorFrequencyMap({});
         setIsCompleted(false);
-        // Don't reset error frequency map to maintain history across sessions
     };
 
     const moveToNextItem = () => {
@@ -339,6 +340,8 @@ export default function Home() {
             typedChars: [],
             typingErrors: [],
         });
+        // Reset error frequency map for the new practice session
+        setErrorFrequencyMap({});
         setIsCompleted(false);
         setPracticeMode('focused');
     };
