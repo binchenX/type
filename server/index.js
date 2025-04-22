@@ -50,32 +50,6 @@ Make the sentences interesting, memorable and progressively more challenging.
 Each sentence should be between 40-60 characters.
 Don't include explanations, just the practice text.`;
 
-    // This is where you would call your local LLM
-    // For demonstration, we'll simulate the call and return mock data
-    // In a real implementation, you would replace this with code to call your specific LLM
-
-    // Example command to call a local LLM (uncomment and modify as needed)
-    /*
-    const llmCommand = `your_llm_command --prompt "${prompt}"`;
-    
-    exec(llmCommand, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Error executing LLM: ${error}`);
-        return res.status(500).json({ success: false, error: 'Failed to generate text' });
-      }
-      
-      const generatedText = stdout.trim();
-      const practiceSections = generatedText.split('\n').filter(line => line.trim() !== '');
-      
-      return res.json({
-        success: true,
-        prompt,
-        text: "Here are practice sentences focused on your problematic characters:",
-        practiceSections
-      });
-    });
-    */
-
     // Mock response (replace with actual LLM call)
     setTimeout(() => {
         const mockPracticeSections = generateMockPractice(problematicChars);

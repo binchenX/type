@@ -15,6 +15,7 @@ export type TypingState = {
         expected: string;
         actual: string;
     }>;
+    lastIncorrectChar?: string; // Track the last incorrect character at current position
 };
 
 export type TypingStats = {

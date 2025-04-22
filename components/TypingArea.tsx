@@ -38,8 +38,9 @@ const Character = styled.span<{
         }
     }};
   
-  /* Remove blue background for current character */
-  background-color: transparent;
+  /* Background styling */
+  background-color: ${props => props.status === 'incorrect' ? 'rgba(239, 68, 68, 0.1)' : 'transparent'};
+  border-radius: 2px;
   
   /* Different text decorations based on status */
   text-decoration: ${props => {
@@ -339,6 +340,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             const typingErrors = prev.typingErrors ? [...prev.typingErrors] : [];
 
             if (!isCorrect) {
+                // Increment error count
                 newErrors += 1;
 
                 // Record detailed information about this error
@@ -357,11 +359,12 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                 return {
                     ...prev,
                     errors: newErrors,
-                    typingErrors
+                    typingErrors,
+                    lastIncorrectChar: lastChar
                 };
             }
 
-            // If correct, add the character and advance position
+            // If correct, add the character, advance position, and clear lastIncorrectChar
             newTypedChars.push(lastChar);
 
             // Check if typing is complete
@@ -383,7 +386,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                 typedChars: newTypedChars,
                 errors: newErrors,
                 typingErrors,
-                endTime: endTime
+                endTime: endTime,
+                lastIncorrectChar: undefined // Clear the last incorrect character
             };
         });
     };
@@ -398,27 +402,40 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     const renderText = () => {
         return text.split('').map((char, index) => {
             let status: 'correct' | 'incorrect' | 'current' | 'untyped';
-            let typedChar = typingState.typedChars[index];
-            let isIncorrect = false;
+            let displayTooltip = false;
+            let tooltipChar = '';
 
             if (index < typingState.currentPosition) {
-                // Character has been typed
-                isIncorrect = typedChar !== char;
-                status = isIncorrect ? 'incorrect' : 'correct';
+                // Already typed characters
+                const typedChar = typingState.typedChars[index];
+                if (typedChar !== char) {
+                    status = 'incorrect';
+                    displayTooltip = true;
+                    tooltipChar = typedChar;
+                } else {
+                    status = 'correct';
+                }
             } else if (index === typingState.currentPosition) {
-                // Current character
-                status = 'current';
+                // Current character position
+                if (typingState.lastIncorrectChar) {
+                    // If there was an incorrect character typed at this position
+                    status = 'incorrect';
+                    displayTooltip = true;
+                    tooltipChar = typingState.lastIncorrectChar;
+                } else {
+                    status = 'current';
+                }
             } else {
-                // Not yet typed
+                // Characters not yet typed
                 status = 'untyped';
             }
 
             return (
-                <Character key={index} status={status} hasTooltip={isIncorrect}>
+                <Character key={index} status={status} hasTooltip={displayTooltip}>
                     {char}
-                    {isIncorrect && (
+                    {displayTooltip && (
                         <ErrorTooltip className="tooltip">
-                            You typed: {typedChar === ' ' ? '⎵' : typedChar}
+                            You typed: {tooltipChar === ' ' ? '⎵' : tooltipChar}
                         </ErrorTooltip>
                     )}
                 </Character>
