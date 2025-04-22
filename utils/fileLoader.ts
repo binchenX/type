@@ -13,11 +13,22 @@ export async function loadMarkdownFile(path: string): Promise<string> {
         }
 
         const content = await response.text();
-        return content;
+        // Replace straight quotes with typographic quotes
+        return replaceQuotes(content);
     } catch (error) {
         console.error('Error loading markdown file:', error);
         return ''; // Return empty string if there's an error
     }
+}
+
+/**
+ * Replace straight quotes with typographic quotes
+ * @param content The text content with potential straight quotes
+ * @returns The content with typographic quotes
+ */
+export function replaceQuotes(content: string): string {
+    // Replace typographic single quotes with straight single quotes
+    return content.replace(/\u2019/g, "'");
 }
 
 /**

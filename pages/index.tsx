@@ -15,7 +15,8 @@ import {
     saveContentToLocalStorage,
     loadContentFromLocalStorage,
     saveTypingStateToLocalStorage,
-    loadTypingStateFromLocalStorage
+    loadTypingStateFromLocalStorage,
+    replaceQuotes
 } from '@/utils/fileLoader';
 
 const Container = styled.div`
@@ -221,14 +222,16 @@ export default function Home() {
     }, [uploadedContent]);
 
     const handleFileUpload = (content: string) => {
-        setUploadedContent(content);
+        // Apply typographic quote replacement
+        const formattedContent = replaceQuotes(content);
+        setUploadedContent(formattedContent);
         // Reset error frequency map when new content is uploaded
         setErrorFrequencyMap({});
         setPracticeMode('regular');
         // Hide upload area after successful upload
         setShowUploadArea(false);
         // Save to localStorage
-        saveContentToLocalStorage(content);
+        saveContentToLocalStorage(formattedContent);
     };
 
     const toggleUploadArea = () => {
