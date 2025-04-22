@@ -339,6 +339,11 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             // Initialize or copy typingErrors array
             const typingErrors = prev.typingErrors ? [...prev.typingErrors] : [];
 
+            // Always update error frequency map regardless of correctness
+            if (updateErrorFrequencyMap) {
+                updateErrorFrequencyMap(expectedChar, lastChar);
+            }
+
             if (!isCorrect) {
                 // Increment error count
                 newErrors += 1;
@@ -349,11 +354,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                     expected: expectedChar,
                     actual: lastChar
                 });
-
-                // Update error frequency map if the function is provided
-                if (updateErrorFrequencyMap) {
-                    updateErrorFrequencyMap(expectedChar, lastChar);
-                }
 
                 // If incorrect, don't advance position but record the error
                 return {
