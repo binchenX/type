@@ -376,7 +376,7 @@ const Results: React.FC<ResultsProps> = ({
 
     // Prepare error frequency data for display
     const errorItems = Object.entries(errorFrequencyMap)
-        .filter(([_, stats]) => stats.attempts > 0) // Only show characters that were attempted
+        .filter(([_, stats]) => stats.attempts > 0 && stats.errors > 0) // Only show characters with errors
         .map(([char, stats]) => ({
             char,
             attempts: stats.attempts,
