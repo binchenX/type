@@ -398,8 +398,8 @@ export default function Home() {
         return parsedItems[currentItemIndex].content;
     };
 
-    // Function to update error frequency map
-    const updateErrorFrequencyMap = (expectedChar: string, typedChar: string) => {
+    // Function to update typing statistics for all characters, both correct and incorrect
+    const updateStatistics = (expectedChar: string, typedChar: string) => {
         setErrorFrequencyMap(prevMap => {
             const newMap = { ...prevMap };
 
@@ -412,7 +412,7 @@ export default function Home() {
                 };
             }
 
-            // Increment attempts
+            // Increment attempts for all characters (tracks both correct and incorrect typing)
             newMap[expectedChar].attempts += 1;
 
             // If character was typed incorrectly
@@ -579,7 +579,7 @@ export default function Home() {
                                             }}
                                             setTypingState={setTypingState}
                                             onComplete={moveToNextItem}
-                                            updateErrorFrequencyMap={updateErrorFrequencyMap}
+                                            updateStatistics={updateStatistics}
                                             onSkipForward={skipCurrentItem}
                                             onSkipBackward={moveToPreviousItem}
                                         />

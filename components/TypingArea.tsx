@@ -169,7 +169,7 @@ interface TypingAreaProps {
     typingState: TypingState;
     setTypingState: React.Dispatch<React.SetStateAction<TypingState>>;
     onComplete: () => void;
-    updateErrorFrequencyMap?: (expectedChar: string, typedChar: string) => void;
+    updateStatistics?: (expectedChar: string, typedChar: string) => void;
     onSkipForward?: () => void;
     onSkipBackward?: () => void;
 }
@@ -235,7 +235,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     typingState,
     setTypingState,
     onComplete,
-    updateErrorFrequencyMap,
+    updateStatistics,
     onSkipForward,
     onSkipBackward
 }) => {
@@ -361,9 +361,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                     actual: typedChar
                 });
             }
-            // Update the error frequency map if the callback is provided
-            if (updateErrorFrequencyMap) {
-                updateErrorFrequencyMap(expectedChar, typedChar);
+            // Update statistics for all typed characters
+            if (updateStatistics) {
+                updateStatistics(expectedChar, typedChar);
             }
         }
 
