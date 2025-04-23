@@ -15,6 +15,12 @@ export type TypingState = {
         expected: string;
         actual: string;
     }>;
+    typingWordErrors?: Array<{
+        word: string;
+        typedWord: string;
+        startIndex: number;
+        endIndex: number;
+    }>;
     lastIncorrectChar?: string; // Track the last incorrect character at current position
 };
 

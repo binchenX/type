@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { ParsedMarkdownItem, ErrorFrequencyMap } from '@/types';
 import { generatePracticeText, convertPracticeSectionsToItems, isLocalEnvironment } from '@/services/practiceService';
@@ -336,6 +336,37 @@ const EnvironmentBadge = styled.div`
   background-color: ${props => props.theme === 'local' ? 'var(--success)' : 'var(--text-light)'};
 `;
 
+const WordErrorsSection = styled.div`
+  width: 100%;
+  max-width: 600px;
+  margin-top: 2rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: var(--background);
+`;
+
+const WordErrorItem = styled.div`
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  border-radius: 4px;
+  background-color: var(--background-light);
+  border-left: 4px solid var(--error);
+`;
+
+const OriginalWord = styled.span`
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text);
+`;
+
+const TypedWord = styled.span`
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--error);
+  text-decoration: line-through;
+`;
+
 interface ResultsProps {
     parsedItems: ParsedMarkdownItem[];
     onReset: () => void;
@@ -346,6 +377,12 @@ interface ResultsProps {
         expected: string;
         actual: string;
     }>;
+    typingWordErrors?: Array<{
+        word: string;
+        typedWord: string;
+        startIndex: number;
+        endIndex: number;
+    }>;
 }
 
 const Results: React.FC<ResultsProps> = ({
@@ -353,7 +390,8 @@ const Results: React.FC<ResultsProps> = ({
     onReset,
     errorFrequencyMap,
     onStartNewPractice,
-    typingErrors = []
+    typingErrors = [],
+    typingWordErrors = []
 }) => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedPractice, setGeneratedPractice] = useState<string[]>([]);
@@ -362,21 +400,36 @@ const Results: React.FC<ResultsProps> = ({
     const [isLocal, setIsLocal] = useState(false);
     const [prompt, setPrompt] = useState<string | null>(null);
     const [showDebug, setShowDebug] = useState(false);
+    const [showWordErrors, setShowWordErrors] = useState(typingWordErrors.length > 0);
 
-    // Check environment on mount
+    // Deduplicate word errors
+    const uniqueWordErrors = useMemo(() => {
+        const seen = new Map();
+        return typingWordErrors.filter(error => {
+            const key = `${error.word}:${error.typedWord}`;
+            if (seen.has(key)) {
+                return false;
+            }
+            seen.set(key, true);
+            return true;
+        });
+    }, [typingWordErrors]);
+
     useEffect(() => {
         setIsLocal(isLocalEnvironment());
     }, []);
 
-    // Calculate total character count
-    const totalChars = parsedItems.reduce((sum, item) => sum + item.content.length, 0);
+    useEffect(() => {
+        if (typingWordErrors.length > 0 && !showWordErrors) {
+            setShowWordErrors(true);
+        }
+    }, [typingWordErrors]);
 
-    // Calculate total word count (roughly 5 chars = 1 word)
+    const totalChars = parsedItems.reduce((sum, item) => sum + item.content.length, 0);
     const totalWords = Math.round(totalChars / 5);
 
-    // Prepare error frequency data for display
     const errorItems = Object.entries(errorFrequencyMap)
-        .filter(([_, stats]) => stats.attempts > 0 && stats.errors > 0) // Only show characters with errors
+        .filter(([_, stats]) => stats.attempts > 0 && stats.errors > 0)
         .map(([char, stats]) => ({
             char,
             attempts: stats.attempts,
@@ -384,10 +437,9 @@ const Results: React.FC<ResultsProps> = ({
             errorRate: stats.errors / stats.attempts,
             incorrectReplacements: stats.incorrectReplacements || {}
         }))
-        .sort((a, b) => b.errorRate - a.errorRate || b.errors - a.errors) // Sort by error rate then by error count
-        .slice(0, 15); // Limit to top 15 problematic characters
+        .sort((a, b) => b.errorRate - a.errorRate || b.errors - a.errors)
+        .slice(0, 15);
 
-    // Generate practice text based on error statistics
     const handleGeneratePractice = async () => {
         setIsGenerating(true);
         setGenerationError(null);
@@ -410,7 +462,6 @@ const Results: React.FC<ResultsProps> = ({
         }
     };
 
-    // Start a new practice session with the generated text
     const handleStartPractice = () => {
         if (onStartNewPractice && generatedPractice.length > 0) {
             const practiceItems = convertPracticeSectionsToItems(generatedPractice);
@@ -465,7 +516,6 @@ const Results: React.FC<ResultsProps> = ({
                                     <ErrorCount>{item.errors} of {item.attempts} attempts</ErrorCount>
                                 </ErrorStats>
 
-                                {/* Show incorrect replacements in a tooltip */}
                                 {Object.keys(item.incorrectReplacements).length > 0 && (
                                     <IncorrectReplacements className="incorrect-replacements">
                                         <TooltipLabel>You typed instead:</TooltipLabel>
@@ -610,6 +660,35 @@ const Results: React.FC<ResultsProps> = ({
                         </ErrorsTable>
                     )}
                 </DetailedErrorsSection>
+            )}
+
+            {typingWordErrors && typingWordErrors.length > 0 && (
+                <WordErrorsSection>
+                    <DetailedErrorsTitle style={{ color: 'var(--error)' }}>
+                        Mistyped Words ({uniqueWordErrors.length})
+                        <ToggleButton onClick={() => setShowWordErrors(!showWordErrors)}>
+                            {showWordErrors ? 'Hide' : 'Show'} Details
+                        </ToggleButton>
+                    </DetailedErrorsTitle>
+
+                    {showWordErrors && (
+                        <div>
+                            <p style={{ marginBottom: '1rem' }}>
+                                These are the words you had trouble typing correctly:
+                            </p>
+                            {uniqueWordErrors.map((error, index) => (
+                                <WordErrorItem key={index}>
+                                    <div>
+                                        Expected: <OriginalWord>{error.word}</OriginalWord>
+                                    </div>
+                                    <div style={{ marginTop: '0.5rem' }}>
+                                        You typed: <TypedWord>{error.typedWord}</TypedWord>
+                                    </div>
+                                </WordErrorItem>
+                            ))}
+                        </div>
+                    )}
+                </WordErrorsSection>
             )}
 
             <ButtonGroup>

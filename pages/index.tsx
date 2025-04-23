@@ -91,6 +91,15 @@ export default function Home() {
         errors: 0,
         typedChars: [],
         typingErrors: [],
+        typingWordErrors: []
+    });
+    // Add accumulated errors state to track errors across all sections
+    const [accumulatedErrors, setAccumulatedErrors] = useState<{
+        typingErrors: Array<{ index: number; expected: string; actual: string }>;
+        typingWordErrors: Array<{ word: string; typedWord: string; startIndex: number; endIndex: number }>;
+    }>({
+        typingErrors: [],
+        typingWordErrors: []
     });
     const [isCompleted, setIsCompleted] = useState(false);
     const [errorFrequencyMap, setErrorFrequencyMap] = useState<ErrorFrequencyMap>({});
@@ -118,6 +127,12 @@ export default function Home() {
                             setCurrentItemIndex(savedState.currentItemIndex || 0);
                             setErrorFrequencyMap(savedState.errorFrequencyMap || {});
                             setPracticeMode(savedState.practiceMode || 'regular');
+
+                            // Ensure typing state has typingWordErrors initialized
+                            setTypingState(prevState => ({
+                                ...prevState,
+                                typingWordErrors: []
+                            }));
                         }
                     } else {
                         // If not in localStorage, try to load the quotes.md file
@@ -216,6 +231,7 @@ export default function Home() {
                 errors: 0,
                 typedChars: [],
                 typingErrors: [],
+                typingWordErrors: []
             });
             setIsCompleted(false);
         }
@@ -247,6 +263,12 @@ export default function Home() {
             errors: 0,
             typedChars: [],
             typingErrors: [],
+            typingWordErrors: []
+        });
+        // Reset accumulated errors too
+        setAccumulatedErrors({
+            typingErrors: [],
+            typingWordErrors: []
         });
         // Reset error frequency map to start fresh for each practice session
         setErrorFrequencyMap({});
@@ -255,18 +277,100 @@ export default function Home() {
 
     const moveToNextItem = () => {
         if (currentItemIndex < parsedItems.length - 1) {
+            // Detect word errors before resetting typing state
+            const currentText = parsedItems[currentItemIndex].content;
+            const wordErrors = detectWordErrors(currentText, typingState);
+
+            // Accumulate errors before resetting typing state
+            setAccumulatedErrors(prev => {
+                return {
+                    typingErrors: [...prev.typingErrors, ...(typingState.typingErrors || [])],
+                    typingWordErrors: [...prev.typingWordErrors, ...wordErrors]
+                };
+            });
+
             setCurrentItemIndex(prev => prev + 1);
+
+            // Explicitly clear typingErrors to prevent persistence between items
             setTypingState({
                 startTime: null,
                 endTime: null,
                 currentPosition: 0,
                 errors: 0,
                 typedChars: [],
-                typingErrors: [],
+                typingErrors: [], // Make sure this is an empty array, not undefined
+                typingWordErrors: []
             });
         } else {
+            // Detect word errors for the last item
+            const currentText = parsedItems[currentItemIndex].content;
+            const wordErrors = detectWordErrors(currentText, typingState);
+
+            // Accumulate errors from the last section
+            setAccumulatedErrors(prev => {
+                return {
+                    typingErrors: [...prev.typingErrors, ...(typingState.typingErrors || [])],
+                    typingWordErrors: [...prev.typingWordErrors, ...wordErrors]
+                };
+            });
             setIsCompleted(true);
         }
+    };
+
+    // Function to detect word errors by comparing expected and actual text
+    const detectWordErrors = (expectedText: string, typingState: TypingState) => {
+        // If no typed characters, return empty array
+        if (!typingState.typedChars || typingState.typedChars.length === 0) {
+            return [];
+        }
+
+        const typedText = typingState.typedChars.join('');
+        const wordErrors: Array<{
+            word: string;
+            typedWord: string;
+            startIndex: number;
+            endIndex: number;
+        }> = [];
+
+        // Split text into words
+        const expectedWords = expectedText.split(/\s+/);
+        const typedWords = typedText.split(/\s+/);
+
+        let expectedIndex = 0;
+        let typedIndex = 0;
+
+        // Compare each word
+        for (let i = 0; i < expectedWords.length && i < typedWords.length; i++) {
+            const expectedWord = expectedWords[i];
+            const typedWord = typedWords[i];
+
+            // Skip empty words
+            if (!expectedWord.trim() || !typedWord.trim()) {
+                continue;
+            }
+
+            // Find the start index of this word in the original text
+            const startIndex = expectedText.indexOf(expectedWord, expectedIndex);
+            if (startIndex === -1) continue;
+
+            // Update expected index for next iteration
+            expectedIndex = startIndex + expectedWord.length;
+
+            // Find the end index of this word
+            const endIndex = startIndex + expectedWord.length;
+
+            // If word doesn't match, record an error
+            if (expectedWord !== typedWord) {
+                wordErrors.push({
+                    word: expectedWord,
+                    typedWord: typedWord,
+                    startIndex,
+                    endIndex
+                });
+            }
+        }
+
+        return wordErrors;
     };
 
     const moveToPreviousItem = () => {
@@ -279,6 +383,7 @@ export default function Home() {
                 errors: 0,
                 typedChars: [],
                 typingErrors: [],
+                typingWordErrors: []
             });
         }
     };
@@ -342,6 +447,12 @@ export default function Home() {
             errors: 0,
             typedChars: [],
             typingErrors: [],
+            typingWordErrors: []
+        });
+        // Reset accumulated errors for new practice
+        setAccumulatedErrors({
+            typingErrors: [],
+            typingWordErrors: []
         });
         // Reset error frequency map for the new practice session
         setErrorFrequencyMap({});
@@ -441,7 +552,9 @@ export default function Home() {
                                         onReset={resetPractice}
                                         errorFrequencyMap={errorFrequencyMap}
                                         onStartNewPractice={handleStartNewPractice}
-                                        typingErrors={typingState.typingErrors || []}
+                                        // Pass accumulated errors instead of just current section errors
+                                        typingErrors={accumulatedErrors.typingErrors}
+                                        typingWordErrors={accumulatedErrors.typingWordErrors}
                                     />
                                 </>
                             ) : (
@@ -459,7 +572,11 @@ export default function Home() {
                                         </KeyboardTips>
                                         <TypingArea
                                             text={getCurrentContent()}
-                                            typingState={typingState}
+                                            typingState={{
+                                                ...typingState,
+                                                typingErrors: typingState.typingErrors || [],
+                                                typingWordErrors: typingState.typingWordErrors || []
+                                            }}
                                             setTypingState={setTypingState}
                                             onComplete={moveToNextItem}
                                             updateErrorFrequencyMap={updateErrorFrequencyMap}

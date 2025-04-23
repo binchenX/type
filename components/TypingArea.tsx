@@ -243,12 +243,31 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     const containerRef = useRef<HTMLDivElement>(null);
     const [showLiveStats, setShowLiveStats] = useState(true);
 
-    // Focus input when component mounts
+    // Track the current word being typed
+    const [currentWordInfo, setCurrentWordInfo] = useState<{
+        word: string;
+        startIndex: number;
+        endIndex: number;
+        typedChars: string[];
+    } | null>(null);
+
+    // Reset when text changes (when moving to a new item)
     useEffect(() => {
         if (inputRef.current) {
+            // Clear the input value
+            inputRef.current.value = '';
             inputRef.current.focus();
         }
-    }, [text]); // Re-focus when text changes
+
+        // Make sure typingErrors array is cleared when text changes
+        // This ensures errors from previous items don't persist in the UI
+        setTypingState(prev => ({
+            ...prev,
+            typingErrors: [],
+            currentPosition: 0,
+            typedChars: []
+        }));
+    }, [text, setTypingState]); // Re-run when text changes
 
     // Add global keyboard event listener for navigation
     useEffect(() => {
@@ -314,75 +333,60 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     };
 
     const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const inputVal = e.target.value;
-        const lastChar = inputVal.charAt(inputVal.length - 1);
+        const typed = e.target.value;
+        const currentPosition = typed.length;
 
-        // Clear the textarea after processing the input
-        if (inputRef.current) {
-            inputRef.current.value = '';
+        // Create a copy of the typing state to update
+        const newTypingState = { ...typingState };
+
+        // If typing has not started yet, record the start time
+        if (!newTypingState.startTime) {
+            newTypingState.startTime = Date.now();
         }
 
-        // Ignore if the last character is not printable
-        if (!lastChar.match(/\S/) && lastChar !== ' ') {
-            return;
-        }
+        // Store the typed character
+        if (currentPosition > 0) {
+            const typedChar = typed[currentPosition - 1];
+            newTypingState.typedChars[currentPosition - 1] = typedChar;
 
-        // Process the new character
-        setTypingState(prev => {
-            // Check if the character is correct
-            const expectedChar = text[prev.currentPosition];
-            const isCorrect = lastChar === expectedChar;
+            // Check if the character was typed correctly
+            const expectedChar = text[currentPosition - 1];
+            if (typedChar !== expectedChar) {
+                newTypingState.errors++;
 
-            // Copy the previous typed characters
-            const newTypedChars = [...prev.typedChars];
-            let newErrors = prev.errors;
-            // Initialize or copy typingErrors array
-            const typingErrors = prev.typingErrors ? [...prev.typingErrors] : [];
-
-            // Always update error frequency map regardless of correctness
-            if (updateErrorFrequencyMap) {
-                updateErrorFrequencyMap(expectedChar, lastChar);
-            }
-
-            // Always add the character to typedChars array, whether correct or not
-            newTypedChars.push(lastChar);
-
-            if (!isCorrect) {
-                // Increment error count
-                newErrors += 1;
-
-                // Record detailed information about this error
-                typingErrors.push({
-                    index: prev.currentPosition,
+                // Add to typing errors array for detailed error tracking
+                newTypingState.typingErrors?.push({
+                    index: currentPosition - 1,
                     expected: expectedChar,
-                    actual: lastChar
+                    actual: typedChar
                 });
+
+                // Update the error frequency map if the callback is provided
+                if (updateErrorFrequencyMap) {
+                    updateErrorFrequencyMap(expectedChar, typedChar);
+                }
             }
+        }
 
-            // Always advance to the next position, regardless of correctness
-            const newPosition = prev.currentPosition + 1;
-            const isComplete = newPosition >= text.length;
+        // Update the current position in the text
+        newTypingState.currentPosition = currentPosition;
 
-            // Set end time if complete
-            let endTime = prev.endTime;
-            if (isComplete && !endTime) {
-                endTime = Date.now();
+        // Remove the logic for word error detection as it will be handled
+        // at the end of each typing session in the parent component
 
-                // Trigger completion callback after state update
-                setTimeout(onComplete, 500);
-            }
+        // Check if typing is complete
+        if (currentPosition === text.length) {
+            newTypingState.endTime = Date.now();
+            setTypingState(newTypingState);
 
-            return {
-                ...prev,
-                currentPosition: newPosition,
-                typedChars: newTypedChars,
-                errors: newErrors,
-                typingErrors,
-                endTime: endTime,
-                // We no longer need lastIncorrectChar since we're not blocking progression
-                lastIncorrectChar: undefined
-            };
-        });
+            // Small delay to allow state to update before calling onComplete
+            setTimeout(() => {
+                onComplete();
+            }, 500);
+        } else {
+            // Update typing state
+            setTypingState(newTypingState);
+        }
     };
 
     // Keep focus on input area
@@ -401,10 +405,13 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             if (index < typingState.currentPosition) {
                 // Already typed characters
                 const typedChar = typingState.typedChars[index];
-                if (typedChar !== char) {
+                // Explicitly check if the typed character is different from the expected character
+                if (typedChar && typedChar !== char) {
                     status = 'incorrect';
                     displayTooltip = true;
                     tooltipChar = typedChar;
+                    // Make sure this error is recorded for display later
+                    console.log(`Character error at ${index}: expected '${char}', got '${typedChar}'`);
                 } else {
                     status = 'correct';
                 }
