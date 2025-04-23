@@ -360,11 +360,10 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                     expected: expectedChar,
                     actual: typedChar
                 });
-
-                // Update the error frequency map if the callback is provided
-                if (updateErrorFrequencyMap) {
-                    updateErrorFrequencyMap(expectedChar, typedChar);
-                }
+            }
+            // Update the error frequency map if the callback is provided
+            if (updateErrorFrequencyMap) {
+                updateErrorFrequencyMap(expectedChar, typedChar);
             }
         }
 
