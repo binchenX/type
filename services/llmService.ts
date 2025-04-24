@@ -31,6 +31,7 @@ export interface LLMProvider {
 export interface LLMServiceConfig {
     preferredProvider?: 'gemini' | 'ollama';
     geminiApiKey?: string;
+    geminiModel?: string;
     ollamaApiUrl?: string;
     ollamaModel?: string;
 }
@@ -41,6 +42,7 @@ export interface LLMServiceConfig {
 export interface LLMConfig {
     gemini: {
         apiKey?: string;
+        model: string;
         enabled: boolean;
     };
     ollama: {
@@ -58,11 +60,13 @@ export class GeminiProvider implements LLMProvider {
     name = 'gemini';
     private apiKey: string;
     private enabled: boolean;
+    private model: string;
     private genAI: GoogleGenerativeAI | null = null;
 
-    constructor(config?: { apiKey?: string; enabled?: boolean }) {
+    constructor(config?: { apiKey?: string; enabled?: boolean; model?: string }) {
         this.apiKey = config?.apiKey || process.env.GEMINI_API_KEY || '';
         this.enabled = config?.enabled === undefined ? true : config.enabled;
+        this.model = config?.model || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
     }
 
     async isAvailable(): Promise<boolean> {
@@ -88,11 +92,9 @@ export class GeminiProvider implements LLMProvider {
     }
 
     private getGenerativeAI() {
-        console.log('Gemini provider: Initializing');
         if (!this.genAI && this.apiKey) {
             try {
                 this.genAI = new GoogleGenerativeAI(this.apiKey);
-                console.log('Gemini provider: Initialized successfully');
             } catch (error) {
                 console.error('Gemini provider: Initialization failed');
                 return null;
@@ -117,11 +119,8 @@ export class GeminiProvider implements LLMProvider {
                     errorRate: Math.round((stats.errors / stats.attempts) * 100),
                 }));
 
-            console.log(`Gemini provider: Found ${problematicChars.length} problematic characters`);
-
             // If no problematic chars, return general practice text
             if (problematicChars.length === 0) {
-                console.log('Gemini provider: No problematic characters found, returning generic sentences');
                 return {
                     success: true,
                     text: "Great job! You don't have any specific characters to practice. Here's a general typing text to keep your skills sharp.",
@@ -134,12 +133,9 @@ export class GeminiProvider implements LLMProvider {
                 .map((item) => item.char === ' ' ? 'SPACE' : item.char)
                 .join(', ');
 
-            console.log(`Gemini provider: Creating prompt for characters: ${charsList}`);
             const prompt = buildPrompt(charsList);
-            console.log(`Gemini provider: Created prompt [length: ${prompt.length}]`);
 
             // Get an instance of the generative AI
-            console.log('Gemini provider: Initializing Gemini API client');
             const ai = this.getGenerativeAI();
             if (!ai) {
                 console.error('Gemini provider: API client initialization failed');
@@ -147,21 +143,17 @@ export class GeminiProvider implements LLMProvider {
             }
 
             // Generate content with Gemini
-            console.log('Gemini provider: Calling Gemini API with model gemini-1.5-pro');
-            const model = ai.getGenerativeModel({ model: "gemini-1.5-pro" });
+            console.log(`Gemini provider: Calling Gemini API with model ${this.model}`);
+            const model = ai.getGenerativeModel({ model: this.model });
             const result = await model.generateContent(prompt);
             const text = result.response.text();
-            console.log('Gemini provider: Received response from API');
 
             // Process the response text into separate practice sentences
-            console.log('Gemini provider: Processing response into practice sentences');
             const practiceSections = text
                 .split('\n')
                 .map((line: string) => line.trim())
                 .filter((line: string) => line.length > 0)
                 .slice(0, 5); // Limit to a maximum of 5 items
-
-            console.log(`Gemini provider: Extracted ${practiceSections.length} practice sentences`);
 
             if (practiceSections.length === 0) {
                 console.error('Gemini provider: No valid practice sentences could be extracted from response');
@@ -169,12 +161,10 @@ export class GeminiProvider implements LLMProvider {
             }
 
             // Log the generated sentences
-            console.log('Gemini provider: Generated practice sentences:');
             practiceSections.forEach((sentence: string, index: number) => {
                 console.log(`  ${index + 1}: ${sentence}`);
             });
 
-            console.log('Gemini provider: Practice text generation successful');
             return {
                 success: true,
                 text: `Here are practice sentences focused on characters: ${problematicChars.map(item => item.char === ' ' ? 'SPACE' : item.char).join(', ')}`,
@@ -430,6 +420,7 @@ export class LLMService {
         // Check environment variables
         console.log('LLM Service Environment Variables:');
         console.log('  GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '[REDACTED]' : 'Not provided');
+        console.log('  GEMINI_MODEL:', process.env.GEMINI_MODEL || 'gemini-2.0-flash (default)');
         console.log('  ENABLE_OLLAMA:', process.env.ENABLE_OLLAMA);
         console.log('  OLLAMA_API_URL:', '[REDACTED]');
         console.log('  OLLAMA_MODEL_NAME:', process.env.OLLAMA_MODEL_NAME || 'Not provided (will use default)');
@@ -439,6 +430,7 @@ export class LLMService {
         this.config = {
             gemini: {
                 apiKey: process.env.GEMINI_API_KEY || undefined,
+                model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
                 enabled: Boolean(process.env.GEMINI_API_KEY)
             },
             ollama: {
@@ -454,6 +446,7 @@ export class LLMService {
         console.log('  Gemini:');
         console.log(`    Enabled: ${this.config.gemini.enabled}`);
         console.log('    API Key: [REDACTED]');
+        console.log(`    Model: ${this.config.gemini.model}`);
         console.log('  Ollama:');
         console.log(`    Enabled: ${this.config.ollama.enabled}`);
         console.log('    API URL: [REDACTED]');
@@ -465,7 +458,10 @@ export class LLMService {
             // Gemini first, then Ollama
             console.log('Provider order: 1. Gemini, 2. Ollama, 3. Fallback');
             this.providers.push(
-                new GeminiProvider(config?.geminiApiKey ? { apiKey: config.geminiApiKey } : undefined)
+                new GeminiProvider({
+                    apiKey: config?.geminiApiKey,
+                    model: config?.geminiModel || this.config.gemini.model
+                })
             );
             this.providers.push(
                 new OllamaProvider(
@@ -483,7 +479,10 @@ export class LLMService {
                 )
             );
             this.providers.push(
-                new GeminiProvider(config?.geminiApiKey ? { apiKey: config.geminiApiKey } : undefined)
+                new GeminiProvider({
+                    apiKey: config?.geminiApiKey,
+                    model: config?.geminiModel || this.config.gemini.model
+                })
             );
         }
 
@@ -605,6 +604,7 @@ function getGenericSentences(): string[] {
 const llmService = new LLMService({
     preferredProvider: process.env.PREFERRED_LLM_PROVIDER as 'gemini' | 'ollama' | undefined,
     geminiApiKey: process.env.GEMINI_API_KEY,
+    geminiModel: process.env.GEMINI_MODEL,
     ollamaApiUrl: process.env.OLLAMA_API_URL,
     ollamaModel: process.env.OLLAMA_MODEL
 });
