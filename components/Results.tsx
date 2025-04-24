@@ -137,10 +137,10 @@ const CharDisplay = styled.span<{ errorRate: number }>`
   height: 2rem;
   border-radius: 4px;
   background-color: ${props => {
-        if (props.errorRate >= 0.5) return 'var(--error)';
-        if (props.errorRate >= 0.25) return 'orange';
-        return 'var(--success)';
-    }};
+    if (props.errorRate >= 0.5) return 'var(--error)';
+    if (props.errorRate >= 0.25) return 'orange';
+    return 'var(--success)';
+  }};
   color: white;
   font-family: var(--font-mono);
   font-weight: 600;
@@ -368,339 +368,366 @@ const TypedWord = styled.span`
 `;
 
 interface ResultsProps {
-    parsedItems: ParsedMarkdownItem[];
-    onReset: () => void;
-    errorFrequencyMap: ErrorFrequencyMap;
-    onStartNewPractice?: (items: ParsedMarkdownItem[]) => void;
-    typingErrors?: Array<{
-        index: number;
-        expected: string;
-        actual: string;
-    }>;
-    typingWordErrors?: Array<{
-        word: string;
-        typedWord: string;
-        startIndex: number;
-        endIndex: number;
-    }>;
+  parsedItems: ParsedMarkdownItem[];
+  onReset: () => void;
+  errorFrequencyMap: ErrorFrequencyMap;
+  onStartNewPractice?: (items: ParsedMarkdownItem[]) => void;
+  typingErrors?: Array<{
+    index: number;
+    expected: string;
+    actual: string;
+  }>;
+  typingWordErrors?: Array<{
+    word: string;
+    typedWord: string;
+    startIndex: number;
+    endIndex: number;
+  }>;
 }
 
 const Results: React.FC<ResultsProps> = ({
-    parsedItems,
-    onReset,
-    errorFrequencyMap,
-    onStartNewPractice,
-    typingErrors = [],
-    typingWordErrors = []
+  parsedItems,
+  onReset,
+  errorFrequencyMap,
+  onStartNewPractice,
+  typingErrors = [],
+  typingWordErrors = []
 }) => {
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedPractice, setGeneratedPractice] = useState<string[]>([]);
-    const [generationError, setGenerationError] = useState<string | null>(null);
-    const [showDetailedErrors, setShowDetailedErrors] = useState(false);
-    const [isLocal, setIsLocal] = useState(false);
-    const [prompt, setPrompt] = useState<string | null>(null);
-    const [showDebug, setShowDebug] = useState(false);
-    const [showWordErrors, setShowWordErrors] = useState(typingWordErrors.length > 0);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedPractice, setGeneratedPractice] = useState<string[]>([]);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [showDetailedErrors, setShowDetailedErrors] = useState(false);
+  const [isLocal, setIsLocal] = useState(false);
+  const [prompt, setPrompt] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
+  const [showWordErrors, setShowWordErrors] = useState(typingWordErrors.length > 0);
 
-    // Deduplicate word errors
-    const uniqueWordErrors = useMemo(() => {
-        const seen = new Map();
-        return typingWordErrors.filter(error => {
-            const key = `${error.word}:${error.typedWord}`;
-            if (seen.has(key)) {
-                return false;
-            }
-            seen.set(key, true);
-            return true;
-        });
-    }, [typingWordErrors]);
+  // Deduplicate word errors
+  const uniqueWordErrors = useMemo(() => {
+    const seen = new Map();
+    return typingWordErrors.filter(error => {
+      const key = `${error.word}:${error.typedWord}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.set(key, true);
+      return true;
+    });
+  }, [typingWordErrors]);
 
-    useEffect(() => {
-        setIsLocal(isLocalEnvironment());
-    }, []);
+  useEffect(() => {
+    setIsLocal(isLocalEnvironment());
+  }, []);
 
-    useEffect(() => {
-        if (typingWordErrors.length > 0 && !showWordErrors) {
-            setShowWordErrors(true);
-        }
-    }, [typingWordErrors]);
+  useEffect(() => {
+    if (typingWordErrors.length > 0 && !showWordErrors) {
+      setShowWordErrors(true);
+    }
+  }, [typingWordErrors]);
 
-    const totalChars = parsedItems.reduce((sum, item) => sum + item.content.length, 0);
-    const totalWords = Math.round(totalChars / 5);
+  const totalChars = parsedItems.reduce((sum, item) => sum + item.content.length, 0);
+  const totalWords = Math.round(totalChars / 5);
 
-    const errorItems = Object.entries(errorFrequencyMap)
-        .filter(([_, stats]) => stats.attempts > 0 && stats.errors > 0)
-        .map(([char, stats]) => ({
-            char,
-            attempts: stats.attempts,
-            errors: stats.errors,
-            errorRate: stats.errors / stats.attempts,
-            incorrectReplacements: stats.incorrectReplacements || {}
-        }))
-        .sort((a, b) => b.errorRate - a.errorRate || b.errors - a.errors)
-        .slice(0, 15);
+  const errorItems = Object.entries(errorFrequencyMap)
+    .filter(([_, stats]) => stats.attempts > 0 && stats.errors > 0)
+    .map(([char, stats]) => ({
+      char,
+      attempts: stats.attempts,
+      errors: stats.errors,
+      errorRate: stats.errors / stats.attempts,
+      incorrectReplacements: stats.incorrectReplacements || {}
+    }))
+    .sort((a, b) => b.errorRate - a.errorRate || b.errors - a.errors)
+    .slice(0, 15);
 
-    const handleGeneratePractice = async () => {
-        setIsGenerating(true);
-        setGenerationError(null);
+  const handleGeneratePractice = async () => {
+    setIsGenerating(true);
+    setGenerationError(null);
 
-        try {
-            const response = await generatePracticeText(errorFrequencyMap);
+    try {
+      const response = await fetch('/api/generate-practice', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(errorFrequencyMap),
+      });
 
-            if (response.success) {
-                setGeneratedPractice(response.practiceSections);
-                if (response.prompt) {
-                    setPrompt(response.prompt);
-                }
-            } else {
-                setGenerationError(response.error || 'Failed to generate practice text');
-            }
-        } catch (error) {
-            setGenerationError(error instanceof Error ? error.message : 'Unknown error');
-        } finally {
-            setIsGenerating(false);
-        }
-    };
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    const handleStartPractice = () => {
-        if (onStartNewPractice && generatedPractice.length > 0) {
-            const practiceItems = convertPracticeSectionsToItems(generatedPractice);
-            onStartNewPractice(practiceItems);
-        }
-    };
+      const data = await response.json();
 
-    return (
-        <Container>
-            <div>
-                <Title>Practice Complete!</Title>
-                <Message>Congratulations! You've completed the typing practice.</Message>
-            </div>
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to generate practice text');
+      }
 
-            <StatsContainer>
-                <StatItem>
-                    <StatValue>{parsedItems.length}</StatValue>
-                    <StatLabel>Text Sections</StatLabel>
-                </StatItem>
+      console.log('Generated practice text using provider:', data.provider);
 
-                <StatItem>
-                    <StatValue>{totalWords}</StatValue>
-                    <StatLabel>Words</StatLabel>
-                </StatItem>
+      // Check if practiceSections exists in the response
+      if (!data.practiceSections || !Array.isArray(data.practiceSections)) {
+        throw new Error('Invalid response format: missing practice sections');
+      }
 
-                <StatItem>
-                    <StatValue>{totalChars}</StatValue>
-                    <StatLabel>Characters</StatLabel>
-                </StatItem>
-            </StatsContainer>
+      // Set the generated practice sections
+      setGeneratedPractice(data.practiceSections);
 
-            {errorItems.length > 0 && (
-                <ErrorStatsSection>
-                    <ErrorStatsHeader>
-                        Characters You Need to Practice
-                        {isLocal ? (
-                            <EnvironmentBadge theme="local">LLM-Enabled</EnvironmentBadge>
-                        ) : (
-                            <EnvironmentBadge theme="remote">LLM Disabled</EnvironmentBadge>
-                        )}
-                    </ErrorStatsHeader>
-                    <p>Here are the characters you had the most trouble with, sorted by error rate:</p>
+      // Set the prompt if available
+      if (data.prompt) {
+        setPrompt(data.prompt);
+      }
+    } catch (err) {
+      console.error('Error generating practice text:', err);
+      setGenerationError(err instanceof Error ? err.message : 'An unexpected error occurred');
+    } finally {
+      setIsGenerating(false);
+      console.log('Practice text generation process completed');
+    }
+  };
 
-                    <ErrorList>
-                        {errorItems.map(item => (
-                            <ErrorItem key={item.char}>
-                                <CharDisplay errorRate={item.errorRate}>
-                                    {item.char === ' ' ? '⎵' : item.char}
-                                </CharDisplay>
-                                <ErrorStats>
-                                    <ErrorRate>{Math.round(item.errorRate * 100)}% error rate</ErrorRate>
-                                    <ErrorCount>{item.errors} of {item.attempts} attempts</ErrorCount>
-                                </ErrorStats>
+  const handleStartPractice = () => {
+    if (onStartNewPractice && generatedPractice.length > 0) {
+      const practiceItems = convertPracticeSectionsToItems(generatedPractice);
+      onStartNewPractice(practiceItems);
+    }
+  };
 
-                                {Object.keys(item.incorrectReplacements).length > 0 && (
-                                    <IncorrectReplacements className="incorrect-replacements">
-                                        <TooltipLabel>You typed instead:</TooltipLabel>
-                                        {Object.entries(item.incorrectReplacements)
-                                            .sort(([_, countA], [__, countB]) => countB - countA)
-                                            .map(([replacementChar, count]) => (
-                                                <ReplacementItem key={replacementChar}>
-                                                    <ReplacementChar>
-                                                        {replacementChar === ' ' ? '⎵' : replacementChar}
-                                                    </ReplacementChar>
-                                                    <ReplacementCount>× {count}</ReplacementCount>
-                                                </ReplacementItem>
-                                            ))}
-                                    </IncorrectReplacements>
-                                )}
-                            </ErrorItem>
-                        ))}
-                    </ErrorList>
+  return (
+    <Container>
+      <div>
+        <Title>Practice Complete!</Title>
+        <Message>Congratulations! You've completed the typing practice.</Message>
+      </div>
 
-                    {isLocal && (
-                        <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-                            <Button
-                                onClick={handleGeneratePractice}
-                                disabled={isGenerating}
-                            >
-                                {isGenerating ? (
-                                    <>
-                                        <LoadingSpinner /> Generating Practice Text...
-                                    </>
-                                ) : (
-                                    "Generate AI-Powered Practice Text"
-                                )}
-                            </Button>
-                        </div>
-                    )}
+      <StatsContainer>
+        <StatItem>
+          <StatValue>{parsedItems.length}</StatValue>
+          <StatLabel>Text Sections</StatLabel>
+        </StatItem>
 
-                    {!isLocal && (
-                        <p style={{ fontSize: '0.875rem', color: 'var(--text-light)', margin: '2rem 0 0', textAlign: 'center' }}>
-                            The AI-powered practice generation is only available when running locally.
-                            <br />
-                            Please run the app locally to access this feature.
-                        </p>
-                    )}
-                </ErrorStatsSection>
+        <StatItem>
+          <StatValue>{totalWords}</StatValue>
+          <StatLabel>Words</StatLabel>
+        </StatItem>
+
+        <StatItem>
+          <StatValue>{totalChars}</StatValue>
+          <StatLabel>Characters</StatLabel>
+        </StatItem>
+      </StatsContainer>
+
+      {errorItems.length > 0 && (
+        <ErrorStatsSection>
+          <ErrorStatsHeader>
+            Characters You Need to Practice
+            {isLocal ? (
+              <EnvironmentBadge theme="local">LLM-Enabled</EnvironmentBadge>
+            ) : (
+              <EnvironmentBadge theme="remote">LLM Disabled</EnvironmentBadge>
             )}
+          </ErrorStatsHeader>
+          <p>Here are the characters you had the most trouble with, sorted by error rate:</p>
 
-            {generatedPractice.length > 0 && (
-                <PracticeGenerationSection>
-                    <h3>Generated Practice Text</h3>
-                    <p>
-                        Here are {!isLocal ? "basic" : "custom AI-generated"} practice sentences
-                        focused on your problematic characters: {errorItems.map(item => item.char === ' ' ? 'SPACE' : item.char).join(', ')}
-                    </p>
+          <ErrorList>
+            {errorItems.map(item => (
+              <ErrorItem key={item.char}>
+                <CharDisplay errorRate={item.errorRate}>
+                  {item.char === ' ' ? '⎵' : item.char}
+                </CharDisplay>
+                <ErrorStats>
+                  <ErrorRate>{Math.round(item.errorRate * 100)}% error rate</ErrorRate>
+                  <ErrorCount>{item.errors} of {item.attempts} attempts</ErrorCount>
+                </ErrorStats>
 
-                    <PracticeItemList>
-                        {generatedPractice.map((text, index) => (
-                            <PracticeItem key={index}>{text}</PracticeItem>
-                        ))}
-                    </PracticeItemList>
-
-                    {prompt && (
-                        <div style={{ marginTop: '2rem', width: '100%', maxWidth: '800px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                <h3 style={{ margin: 0 }}>AI Debug Info</h3>
-                                <button
-                                    onClick={() => setShowDebug(!showDebug)}
-                                    style={{
-                                        background: 'transparent',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: '4px',
-                                        padding: '0.25rem 0.5rem',
-                                        cursor: 'pointer',
-                                        color: 'var(--text-light)'
-                                    }}
-                                >
-                                    {showDebug ? 'Hide Prompt' : 'Show Prompt'}
-                                </button>
-                            </div>
-
-                            {showDebug && (
-                                <div style={{
-                                    padding: '1rem',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: '8px',
-                                    backgroundColor: 'var(--background)',
-                                    fontFamily: 'var(--font-mono)',
-                                    fontSize: '0.875rem',
-                                    whiteSpace: 'pre-wrap',
-                                    overflowX: 'auto'
-                                }}>
-                                    {prompt}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {onStartNewPractice && (
-                        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-                            <Button onClick={handleStartPractice}>
-                                Start Practicing These Sentences
-                            </Button>
-                        </div>
-                    )}
-                </PracticeGenerationSection>
-            )}
-
-            {generationError && (
-                <div style={{ color: 'var(--error)', marginTop: '1rem' }}>
-                    Error: {generationError}
-                </div>
-            )}
-
-            {typingErrors && typingErrors.length > 0 && (
-                <DetailedErrorsSection>
-                    <DetailedErrorsTitle>
-                        Detailed Typing Errors
-                        <ToggleButton onClick={() => setShowDetailedErrors(!showDetailedErrors)}>
-                            {showDetailedErrors ? 'Hide' : 'Show'} Details
-                        </ToggleButton>
-                    </DetailedErrorsTitle>
-
-                    {showDetailedErrors && (
-                        <ErrorsTable>
-                            <TableHead>
-                                <tr>
-                                    <th>Expected</th>
-                                    <th>You Typed</th>
-                                </tr>
-                            </TableHead>
-                            <TableBody>
-                                {typingErrors.map((error, index) => (
-                                    <tr key={index}>
-                                        <CharCell>
-                                            {error.expected === ' ' ? '⎵' : error.expected}
-                                        </CharCell>
-                                        <CharCell>
-                                            {error.actual === ' ' ? '⎵' : error.actual}
-                                        </CharCell>
-                                    </tr>
-                                ))}
-                            </TableBody>
-                        </ErrorsTable>
-                    )}
-                </DetailedErrorsSection>
-            )}
-
-            {typingWordErrors && typingWordErrors.length > 0 && (
-                <WordErrorsSection>
-                    <DetailedErrorsTitle style={{ color: 'var(--error)' }}>
-                        Mistyped Words ({uniqueWordErrors.length})
-                        <ToggleButton onClick={() => setShowWordErrors(!showWordErrors)}>
-                            {showWordErrors ? 'Hide' : 'Show'} Details
-                        </ToggleButton>
-                    </DetailedErrorsTitle>
-
-                    {showWordErrors && (
-                        <div>
-                            <p style={{ marginBottom: '1rem' }}>
-                                These are the words you had trouble typing correctly:
-                            </p>
-                            {uniqueWordErrors.map((error, index) => (
-                                <WordErrorItem key={index}>
-                                    <div>
-                                        Expected: <OriginalWord>{error.word}</OriginalWord>
-                                    </div>
-                                    <div style={{ marginTop: '0.5rem' }}>
-                                        You typed: <TypedWord>{error.typedWord}</TypedWord>
-                                    </div>
-                                </WordErrorItem>
-                            ))}
-                        </div>
-                    )}
-                </WordErrorsSection>
-            )}
-
-            <ButtonGroup>
-                <Button onClick={onReset}>Practice Again</Button>
-                {generatedPractice.length === 0 && errorItems.length > 0 && !isGenerating && isLocal && (
-                    <OutlineButton onClick={handleGeneratePractice}>
-                        Generate Practice Text
-                    </OutlineButton>
+                {Object.keys(item.incorrectReplacements).length > 0 && (
+                  <IncorrectReplacements className="incorrect-replacements">
+                    <TooltipLabel>You typed instead:</TooltipLabel>
+                    {Object.entries(item.incorrectReplacements)
+                      .sort(([_, countA], [__, countB]) => countB - countA)
+                      .map(([replacementChar, count]) => (
+                        <ReplacementItem key={replacementChar}>
+                          <ReplacementChar>
+                            {replacementChar === ' ' ? '⎵' : replacementChar}
+                          </ReplacementChar>
+                          <ReplacementCount>× {count}</ReplacementCount>
+                        </ReplacementItem>
+                      ))}
+                  </IncorrectReplacements>
                 )}
-            </ButtonGroup>
-        </Container>
-    );
+              </ErrorItem>
+            ))}
+          </ErrorList>
+
+          {isLocal && (
+            <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+              <Button
+                onClick={handleGeneratePractice}
+                disabled={isGenerating}
+              >
+                {isGenerating ? (
+                  <>
+                    <LoadingSpinner /> Generating Practice Text...
+                  </>
+                ) : (
+                  "Generate AI-Powered Practice Text"
+                )}
+              </Button>
+            </div>
+          )}
+
+          {!isLocal && (
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-light)', margin: '2rem 0 0', textAlign: 'center' }}>
+              The AI-powered practice generation is only available when running locally.
+              <br />
+              Please run the app locally to access this feature.
+            </p>
+          )}
+        </ErrorStatsSection>
+      )}
+
+      {generatedPractice.length > 0 && (
+        <PracticeGenerationSection>
+          <h3>Generated Practice Text</h3>
+          <p>
+            Here are {!isLocal ? "basic" : "custom AI-generated"} practice sentences
+            focused on your problematic characters: {errorItems.map(item => item.char === ' ' ? 'SPACE' : item.char).join(', ')}
+          </p>
+
+          <PracticeItemList>
+            {generatedPractice.map((text, index) => (
+              <PracticeItem key={index}>{text}</PracticeItem>
+            ))}
+          </PracticeItemList>
+
+          {prompt && (
+            <div style={{ marginTop: '2rem', width: '100%', maxWidth: '800px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h3 style={{ margin: 0 }}>AI Debug Info</h3>
+                <button
+                  onClick={() => setShowDebug(!showDebug)}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid var(--border)',
+                    borderRadius: '4px',
+                    padding: '0.25rem 0.5rem',
+                    cursor: 'pointer',
+                    color: 'var(--text-light)'
+                  }}
+                >
+                  {showDebug ? 'Hide Prompt' : 'Show Prompt'}
+                </button>
+              </div>
+
+              {showDebug && (
+                <div style={{
+                  padding: '1rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--background)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.875rem',
+                  whiteSpace: 'pre-wrap',
+                  overflowX: 'auto'
+                }}>
+                  {prompt}
+                </div>
+              )}
+            </div>
+          )}
+
+          {onStartNewPractice && (
+            <div style={{ textAlign: 'center', marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <Button onClick={handleStartPractice}>
+                Start Practicing These Sentences
+              </Button>
+              <OutlineButton onClick={handleGeneratePractice}>
+                Generate New Sentences
+              </OutlineButton>
+            </div>
+          )}
+        </PracticeGenerationSection>
+      )}
+
+      {generationError && (
+        <div style={{ color: 'var(--error)', marginTop: '1rem' }}>
+          Error: {generationError}
+        </div>
+      )}
+
+      {typingErrors && typingErrors.length > 0 && (
+        <DetailedErrorsSection>
+          <DetailedErrorsTitle>
+            Detailed Typing Errors
+            <ToggleButton onClick={() => setShowDetailedErrors(!showDetailedErrors)}>
+              {showDetailedErrors ? 'Hide' : 'Show'} Details
+            </ToggleButton>
+          </DetailedErrorsTitle>
+
+          {showDetailedErrors && (
+            <ErrorsTable>
+              <TableHead>
+                <tr>
+                  <th>Expected</th>
+                  <th>You Typed</th>
+                </tr>
+              </TableHead>
+              <TableBody>
+                {typingErrors.map((error, index) => (
+                  <tr key={index}>
+                    <CharCell>
+                      {error.expected === ' ' ? '⎵' : error.expected}
+                    </CharCell>
+                    <CharCell>
+                      {error.actual === ' ' ? '⎵' : error.actual}
+                    </CharCell>
+                  </tr>
+                ))}
+              </TableBody>
+            </ErrorsTable>
+          )}
+        </DetailedErrorsSection>
+      )}
+
+      {typingWordErrors && typingWordErrors.length > 0 && (
+        <WordErrorsSection>
+          <DetailedErrorsTitle style={{ color: 'var(--error)' }}>
+            Mistyped Words ({uniqueWordErrors.length})
+            <ToggleButton onClick={() => setShowWordErrors(!showWordErrors)}>
+              {showWordErrors ? 'Hide' : 'Show'} Details
+            </ToggleButton>
+          </DetailedErrorsTitle>
+
+          {showWordErrors && (
+            <div>
+              <p style={{ marginBottom: '1rem' }}>
+                These are the words you had trouble typing correctly:
+              </p>
+              {uniqueWordErrors.map((error, index) => (
+                <WordErrorItem key={index}>
+                  <div>
+                    Expected: <OriginalWord>{error.word}</OriginalWord>
+                  </div>
+                  <div style={{ marginTop: '0.5rem' }}>
+                    You typed: <TypedWord>{error.typedWord}</TypedWord>
+                  </div>
+                </WordErrorItem>
+              ))}
+            </div>
+          )}
+        </WordErrorsSection>
+      )}
+
+      <ButtonGroup>
+        <Button onClick={onReset}>Practice Again</Button>
+        {generatedPractice.length === 0 && errorItems.length > 0 && !isGenerating && isLocal && (
+          <OutlineButton onClick={handleGeneratePractice}>
+            Generate Practice Text
+          </OutlineButton>
+        )}
+      </ButtonGroup>
+    </Container>
+  );
 };
 
 export default Results; 

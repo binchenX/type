@@ -100,9 +100,9 @@ By default, the application is configured to work with a local Ollama instance. 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           Client Browser                                │
-└───────────────────────────────────┬─────────────────────────────────────┘
-                                    │
-                                    ▼
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           Next.js Frontend                              │
 │                                                                         │
@@ -112,33 +112,16 @@ By default, the application is configured to work with a local Ollama instance. 
 │  │                 │       │                │      │      ts        │   │
 │  └─────────────────┘       └────────────────┘      └───────┬────────┘   │
 │                                                            │            │
+│                                                            ▼            │
+│                                                    ┌───────────────┐    │
+│                                                    │ services/     │    │
+│                                                    │ llmService.ts │    │
+│                                                    └───────┬───────┘    │
+│                                                            │            │
 └────────────────────────────────────────────────────────────┼────────────┘
                                                              │
                                                              ▼
 ┌────────────────────────────────────────────────────────────┴────────────┐
-│                          Next.js API Route                              │
-│                                                                         │
-│                        pages/api/generate-practice.ts                   │
-│                                                                         │
-│                          ┌─────────────────┐                            │
-│                          │   Error Data    │                            │
-│                          │   Processing    │                            │
-│                          └────────┬────────┘                            │
-│                                   │                                     │
-│                                   ▼                                     │
-│                          ┌─────────────────┐                            │
-│                          │  Prompt Builder │                            │
-│                          └────────┬────────┘                            │
-│                                   │                                     │
-│                                   ▼                                     │
-│                          ┌─────────────────┐                            │
-│                          │   LLM Handler   │                            │
-│                          └────────┬────────┘                            │
-│                                   │                                     │
-└───────────────────────────────────┼─────────────────────────────────────┘
-                                    │
-                                    ▼
-┌───────────────────────────────────┴─────────────────────────────────────┐
 │                          Local Ollama Instance                          │
 │                                                                         │
 │                          http://localhost:11434                         │
@@ -161,7 +144,7 @@ By default, the application is configured to work with a local Ollama instance. 
 #### Customization:
 
 The LLM integration is designed to be extensible:
-- You can modify the prompt format in `pages/api/generate-practice.ts`
+- You can modify the prompt format in `services/llmService.ts` 
 - The default connection is to a local Ollama instance, but can be changed to any LLM provider
 - Environment variables allow configuring the connection details
 

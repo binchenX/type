@@ -318,6 +318,7 @@ export default function Home() {
     };
 
     // Function to detect word errors by comparing expected and actual text
+    // TODO: use llm
     const detectWordErrors = (expectedText: string, typingState: TypingState) => {
         // If no typed characters, return empty array
         if (!typingState.typedChars || typingState.typedChars.length === 0) {

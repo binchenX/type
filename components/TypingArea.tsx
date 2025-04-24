@@ -409,8 +409,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                     status = 'incorrect';
                     displayTooltip = true;
                     tooltipChar = typedChar;
-                    // Make sure this error is recorded for display later
-                    console.log(`Character error at ${index}: expected '${char}', got '${typedChar}'`);
                 } else {
                     status = 'correct';
                 }
