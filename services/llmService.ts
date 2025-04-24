@@ -417,15 +417,6 @@ export class LLMService {
     private config: LLMConfig;
 
     constructor(config?: LLMServiceConfig) {
-        // Check environment variables
-        console.log('LLM Service Environment Variables:');
-        console.log('  GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '[REDACTED]' : 'Not provided');
-        console.log('  GEMINI_MODEL:', process.env.GEMINI_MODEL || 'gemini-2.0-flash (default)');
-        console.log('  ENABLE_OLLAMA:', process.env.ENABLE_OLLAMA);
-        console.log('  OLLAMA_API_URL:', '[REDACTED]');
-        console.log('  OLLAMA_MODEL_NAME:', process.env.OLLAMA_MODEL_NAME || 'Not provided (will use default)');
-        console.log('  PREFERRED_LLM_PROVIDER:', process.env.PREFERRED_LLM_PROVIDER || 'Not provided (will use default)');
-
         // Default configuration
         this.config = {
             gemini: {
@@ -441,22 +432,23 @@ export class LLMService {
             preferredProvider: config?.preferredProvider
         };
 
-        // Log configuration (with sensitive data redacted)
-        console.log('LLM Service Configuration:');
-        console.log('  Gemini:');
-        console.log(`    Enabled: ${this.config.gemini.enabled}`);
-        console.log('    API Key: [REDACTED]');
-        console.log(`    Model: ${this.config.gemini.model}`);
-        console.log('  Ollama:');
-        console.log(`    Enabled: ${this.config.ollama.enabled}`);
-        console.log('    API URL: [REDACTED]');
-        console.log(`    Model: ${this.config.ollama.modelName}`);
-        console.log(`  Preferred Provider: ${this.config.preferredProvider || 'None (default order)'}`);
+        // Log configuration (with sensitive data redacted) - server side only
+        if (typeof window === 'undefined') {
+            console.log('LLM Service Configuration:');
+            console.log('  Gemini:');
+            console.log(`    Enabled: ${this.config.gemini.enabled}`);
+            console.log('    API Key: [REDACTED]');
+            console.log(`    Model: ${this.config.gemini.model}`);
+            console.log('  Ollama:');
+            console.log(`    Enabled: ${this.config.ollama.enabled}`);
+            console.log('    API URL: [REDACTED]');
+            console.log(`    Model: ${this.config.ollama.modelName}`);
+            console.log(`  Preferred Provider: ${this.config.preferredProvider || 'None (default order)'}`);
+        }
 
         // Add providers in order of preference
         if (config?.preferredProvider === 'gemini') {
             // Gemini first, then Ollama
-            console.log('Provider order: 1. Gemini, 2. Ollama, 3. Fallback');
             this.providers.push(
                 new GeminiProvider({
                     apiKey: config?.geminiApiKey,
@@ -470,8 +462,6 @@ export class LLMService {
                 )
             );
         } else {
-            // Ollama first, then Gemini
-            console.log('Provider order: 1. Ollama, 2. Gemini, 3. Fallback');
             this.providers.push(
                 new OllamaProvider(
                     config?.ollamaApiUrl || process.env.OLLAMA_API_URL || 'http://localhost:11434',
