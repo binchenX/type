@@ -208,23 +208,24 @@ export class GeminiProvider implements LLMProvider {
 
     async generateLearningPlan(params: LearningPlanParams): Promise<GenerateLearningPlanResponse> {
         try {
-            console.log('Gemini provider: Starting learning plan generation');
-            console.log(`Generating plan for ${params.level} level with current WPM: ${params.currentWpm}`);
+            const ai = this.getGenerativeAI();
+            if (!ai) {
+                throw new Error('Gemini API client is not initialized');
+            }
 
-            const prompt = `Generate a structured typing practice plan for a ${params.level} typist with current speed of ${params.currentWpm} WPM.
-The plan should be organized into modules, with each module focusing on a specific skill area.
+            const model = ai.getGenerativeModel({ model: this.model });
 
-Format the response as a JSON object with the following structure:
+            const prompt = `Generate a structured typing practice learning plan as a JSON object with the following structure:
 {
   "modules": [
     {
-      "name": "Module Name",
-      "description": "Brief description of the module's focus",
+      "name": string,
+      "description": string,
       "lessons": [
         {
-          "title": "Lesson Title",
-          "description": "Brief description of the lesson focus",
-          "content": "Practice text for typing (40-60 characters)",
+          "title": string,
+          "description": string,
+          "content": string,
           "targetWpm": number
         }
       ]
@@ -232,63 +233,38 @@ Format the response as a JSON object with the following structure:
   ]
 }
 
-Create 3 modules, each with 6 lessons. Structure the modules as follows:
+The plan should be tailored for a ${params.level} level typist currently typing at ${params.currentWpm} WPM.
+Return only the JSON object without any markdown formatting.`;
 
-For beginner level:
-- Module 1: Home Row Mastery
-- Module 2: Common Words and Patterns
-- Module 3: Basic Sentences and Punctuation
-
-For intermediate level:
-- Module 1: Speed Building
-- Module 2: Accuracy Improvement
-- Module 3: Advanced Patterns
-
-For advanced level:
-- Module 1: Speed Optimization
-- Module 2: Complex Text Patterns
-- Module 3: Professional Content
-
-Each lesson's targetWpm should progressively increase, starting from the user's current WPM.
-Ensure practice texts are interesting and relevant to the module's focus.`;
-
-            // Get an instance of the generative AI
-            const ai = this.getGenerativeAI();
-            if (!ai) {
-                console.error('Gemini provider: API client initialization failed');
-                throw new Error('Gemini API client is not initialized');
-            }
-
-            // Generate content with Gemini
-            console.log(`Gemini provider: Calling Gemini API with model ${this.model}`);
-            const model = ai.getGenerativeModel({ model: this.model });
             const result = await model.generateContent(prompt);
             const text = result.response.text();
 
-            // Parse the response as JSON
+            // Try to parse the response directly first
             try {
-                const plan = JSON.parse(text);
-                console.log('Generated Learning Plan Structure:');
-                plan.modules.forEach((module: any, moduleIndex: number) => {
-                    console.log(`\nModule ${moduleIndex + 1}: ${module.name}`);
-                    module.lessons.forEach((lesson: any, lessonIndex: number) => {
-                        console.log(`  Lesson ${lessonIndex + 1}: ${lesson.title}`);
-                    });
-                });
+                const parsedResponse = JSON.parse(text);
                 return {
+                    ...parsedResponse,
                     success: true,
-                    modules: plan.modules,
-                    provider: this.name
+                    provider: 'gemini'
                 };
-                console.log('Generated Learning Plan Details:');
-                console.log(JSON.stringify(plan, null, 2));
-            } catch (error) {
-                console.error('Failed to parse Gemini response as JSON:', error);
-                return getFallbackLearningPlan(params);
+            } catch (initialError) {
+                // If direct parsing fails, try cleaning the response
+                const cleanJson = text.replace(/```json\n?|\n?```/g, '').trim();
+                try {
+                    const parsedResponse = JSON.parse(cleanJson);
+                    return {
+                        ...parsedResponse,
+                        success: true,
+                        provider: 'gemini'
+                    };
+                } catch (cleanedError) {
+                    console.error('Failed to parse Gemini response. Raw response:', text);
+                    throw new Error('Failed to parse learning plan response');
+                }
             }
         } catch (error) {
-            console.error('Error generating learning plan with Gemini:', error);
-            return getFallbackLearningPlan(params);
+            console.error('Error in Gemini learning plan generation:', error);
+            throw error;
         }
     }
 }
