@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { TypingState } from '@/types';
+import Keyboard from './Keyboard';
 
 const Container = styled.div`
   display: flex;
@@ -433,12 +434,23 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         });
     };
 
+    // Add this function to get the next character
+    const getNextChar = () => {
+        if (typingState.currentPosition >= text.length) {
+            return null;
+        }
+        return text[typingState.currentPosition];
+    };
+
     return (
         <Container ref={containerRef} onClick={handleContainerClick}>
             <h3>Type the text below:</h3>
             <TextDisplay>
                 {renderText()}
             </TextDisplay>
+
+            {/* Add the Keyboard component here */}
+            <Keyboard nextChar={getNextChar()} />
 
             {/* Add live error statistics */}
             {typingState.typingErrors && typingState.typingErrors.length > 0 && (
