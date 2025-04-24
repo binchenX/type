@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { ParsedMarkdownItem, ErrorFrequencyMap } from '@/types';
-import { generatePracticeText, convertPracticeSectionsToItems, isLocalEnvironment } from '@/services/practiceService';
 
 const Container = styled.div`
   display: flex;
@@ -384,6 +383,34 @@ interface ResultsProps {
     endIndex: number;
   }>;
 }
+
+/**
+ * Detects if the app is running in a local environment
+ */
+function isLocalEnvironment(): boolean {
+  // Check if we're in the browser context
+  if (typeof window === 'undefined') {
+    return false; // Server-side rendering
+  }
+
+  // Check if the hostname is localhost or 127.0.0.1
+  const hostname = window.location.hostname;
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
+
+/**
+ * Convert practice sentences into ParsedMarkdownItems for the typing practice app
+ */
+function convertPracticeSectionsToItems(
+  practiceSections: string[]
+): ParsedMarkdownItem[] {
+  return practiceSections.map((content, index) => ({
+    type: 'paragraph',
+    content,
+  }));
+}
+
 
 const Results: React.FC<ResultsProps> = ({
   parsedItems,
