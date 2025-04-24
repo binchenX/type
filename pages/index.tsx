@@ -20,6 +20,7 @@ import {
 } from '@/utils/fileLoader';
 import TypingAssessment from '@/components/TypingAssessment';
 import LearningPlan from '@/components/LearningPlan';
+import { LevelBasedPlanParams, AssessmentBasedPlanParams } from '@/services/llmService';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -111,6 +112,12 @@ export default function Home() {
     const [mode, setMode] = useState<'assessment' | 'learning' | 'practice'>('assessment');
     const [userLevel, setUserLevel] = useState<'beginner' | 'intermediate' | 'advanced' | null>(null);
     const [userWpm, setUserWpm] = useState<number>(0);
+    const [initialWpm, setInitialWpm] = useState<number>(0);
+    const [learningPlanParams, setLearningPlanParams] = useState<LevelBasedPlanParams | AssessmentBasedPlanParams>({
+        type: 'level_based',
+        level: 'beginner',
+        currentWpm: 0
+    });
 
     // Load content from localStorage or public directory on initial component mount
     useEffect(() => {
@@ -493,10 +500,40 @@ export default function Home() {
         }
     };
 
-    const handleAssessmentComplete = (level: 'beginner' | 'intermediate' | 'advanced', wpm: number) => {
+    const handleAssessmentComplete = (
+        level: 'beginner' | 'intermediate' | 'advanced',
+        wpm: number,
+        assessmentData?: {
+            expectedText: string;
+            actualText: string;
+            accuracy: number;
+            errorPatterns: {
+                characterErrors: { [key: string]: number };
+                commonMistakes: Array<{ expected: string; actual: string; count: number }>;
+            };
+        }
+    ) => {
         setUserLevel(level);
-        setUserWpm(wpm);
-        setMode('learning');
+        setInitialWpm(wpm);
+
+        // If we have assessment data, use it for more personalized learning plan
+        if (assessmentData) {
+            setMode('learning');
+            setLearningPlanParams({
+                type: 'assessment',
+                expectedText: assessmentData.expectedText,
+                actualText: assessmentData.actualText,
+                wpm
+            });
+        } else {
+            // Fall back to level-based plan
+            setMode('learning');
+            setLearningPlanParams({
+                type: 'level_based',
+                level,
+                currentWpm: wpm
+            });
+        }
     };
 
     const handleLearningComplete = () => {
@@ -565,8 +602,7 @@ export default function Home() {
 
                     {mode === 'learning' && userLevel && (
                         <LearningPlan
-                            userLevel={userLevel}
-                            initialWpm={userWpm}
+                            planParams={learningPlanParams}
                             onComplete={handleLearningComplete}
                             onExit={handleExitLearning}
                         />

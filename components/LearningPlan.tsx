@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import TypingArea from './TypingArea';
 import Stats from './Stats';
 import { TypingState } from '@/types';
+import { LevelBasedPlanParams, AssessmentBasedPlanParams, LearningPlanParams } from '@/services/llmService';
 
 const PlanContainer = styled.div`
   max-width: 800px;
@@ -114,6 +115,37 @@ const Button = styled.button<{ primary?: boolean }>`
   }
 `;
 
+const LoadingContainer = styled.div`
+    text-align: center;
+    padding: 2rem;
+    color: var(--text);
+`;
+
+const LoadingSpinner = styled.div`
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    border: 3px solid var(--background-light);
+    border-radius: 50%;
+    border-top-color: var(--primary);
+    animation: spin 1s ease-in-out infinite;
+    margin-bottom: 1rem;
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+`;
+
+const LoadingText = styled.div`
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+`;
+
+const LoadingSubText = styled.div`
+    font-size: 0.9rem;
+    color: var(--text-light);
+`;
+
 interface Module {
     name: string;
     description: string;
@@ -126,18 +158,18 @@ interface Module {
 }
 
 interface LearningPlanProps {
-    userLevel: 'beginner' | 'intermediate' | 'advanced';
-    initialWpm: number;
+    planParams: LevelBasedPlanParams | AssessmentBasedPlanParams;
     onComplete: () => void;
     onExit: () => void;
 }
 
 const LearningPlan: React.FC<LearningPlanProps> = ({
-    userLevel,
-    initialWpm,
+    planParams,
     onComplete,
     onExit
 }) => {
+    console.log('LearningPlan: Component mounted with params:', planParams);
+
     const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
     const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
     const [typingState, setTypingState] = useState<TypingState>({
@@ -154,27 +186,21 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
 
     useEffect(() => {
         const generatePlan = async () => {
-            let currentWpm: number;
-            try {
-                console.log('LearningPlan: Starting plan generation');
-                console.log('LearningPlan: User level:', userLevel);
-                console.log('LearningPlan: Initial WPM:', initialWpm);
+            console.log('LearningPlan: Starting plan generation');
 
-                currentWpm = Number(initialWpm);
-                if (isNaN(currentWpm)) {
-                    throw new Error('Invalid WPM value');
-                }
+            try {
+                console.log('LearningPlan: Making API request to /api/generate-learning-plan');
+                console.log('LearningPlan: Request body:', JSON.stringify(planParams, null, 2));
 
                 const response = await fetch('/api/generate-learning-plan', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        level: userLevel as 'beginner' | 'intermediate' | 'advanced',
-                        currentWpm: Number(currentWpm)
-                    }),
+                    body: JSON.stringify(planParams)
                 });
+
+                console.log('LearningPlan: API response status:', response.status);
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
@@ -186,14 +212,7 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
                 console.log('LearningPlan: Raw API response:', JSON.stringify(data, null, 2));
 
                 if (data.modules && Array.isArray(data.modules)) {
-                    console.log('LearningPlan: Number of modules:', data.modules.length);
-                    data.modules.forEach((module: Module, index: number) => {
-                        console.log(`LearningPlan: Module ${index + 1}:`, {
-                            name: module.name,
-                            description: module.description,
-                            lessonCount: module.lessons?.length || 0
-                        });
-                    });
+                    console.log('LearningPlan: Valid modules received, count:', data.modules.length);
                     setModules(data.modules);
                 } else {
                     console.error('LearningPlan: Invalid response format:', data);
@@ -209,7 +228,9 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
                         title: 'Home Row Introduction',
                         description: 'Learn the basic position of home row keys',
                         content: 'asdf jkl; asdf jkl; fjfjfj dkdkdk slslsl ajajaj',
-                        targetWpm: Math.max(20, Math.floor(initialWpm * 0.8))
+                        targetWpm: Math.max(20, Math.floor(
+                            planParams.type === 'level_based' ? planParams.currentWpm * 0.8 : planParams.wpm * 0.8
+                        ))
                     }]
                 }];
                 console.log('LearningPlan: Using fallback modules:', fallbackModules);
@@ -220,7 +241,7 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
         };
 
         generatePlan();
-    }, [userLevel, initialWpm]);
+    }, [planParams]);
 
     const handleLessonComplete = () => {
         const currentModule = modules[currentModuleIndex];
@@ -251,7 +272,16 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
     if (isLoading) {
         return (
             <PlanContainer>
-                <ModuleTitle>Generating your personalized learning plan...</ModuleTitle>
+                <LoadingContainer>
+                    <LoadingSpinner />
+                    <LoadingText>Generating your personalized learning plan...</LoadingText>
+                    <LoadingSubText>
+                        Creating a custom plan for {planParams.type === 'level_based' ?
+                            `${planParams.level} level at ${planParams.currentWpm} WPM` :
+                            `${planParams.wpm} WPM`
+                        }
+                    </LoadingSubText>
+                </LoadingContainer>
             </PlanContainer>
         );
     }

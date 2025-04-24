@@ -39,10 +39,24 @@ export interface GenerateLearningPlanResponse {
 /**
  * Learning plan request parameters
  */
-export interface LearningPlanParams {
+export interface BaseLearningPlanParams {
+    type: 'assessment' | 'level_based';
+}
+
+export interface LevelBasedPlanParams extends BaseLearningPlanParams {
+    type: 'level_based';
     level: 'beginner' | 'intermediate' | 'advanced';
     currentWpm: number;
 }
+
+export interface AssessmentBasedPlanParams extends BaseLearningPlanParams {
+    type: 'assessment';
+    expectedText: string;
+    actualText: string;
+    wpm: number;
+}
+
+export type LearningPlanParams = LevelBasedPlanParams | AssessmentBasedPlanParams;
 
 /**
  * LLM Provider interface - all providers must implement this
@@ -208,62 +222,92 @@ export class GeminiProvider implements LLMProvider {
 
     async generateLearningPlan(params: LearningPlanParams): Promise<GenerateLearningPlanResponse> {
         try {
+            console.log('Gemini provider: Starting learning plan generation');
+
+            // Extract level and WPM based on params type
+            let level: string;
+            let currentWpm: number;
+
+            if (params.type === 'level_based') {
+                level = params.level;
+                currentWpm = params.currentWpm;
+            } else {
+                // For assessment-based, use WPM from assessment
+                level = params.wpm < 30 ? 'beginner' : params.wpm < 60 ? 'intermediate' : 'advanced';
+                currentWpm = params.wpm;
+            }
+
+            console.log('Generating plan for level:', level, 'with WPM:', currentWpm);
+
+            const prompt = `Generate a structured typing practice plan. Return ONLY a JSON object (no markdown formatting, no code blocks) with the following structure:
+{
+    "modules": [
+        {
+            "name": "string",
+            "description": "string",
+            "lessons": [
+                {
+                    "title": "string",
+                    "description": "string",
+                    "content": "string",
+                    "targetWpm": number
+                }
+            ]
+        }
+    ]
+}
+
+The plan should be tailored for a ${level} level typist with current speed of ${currentWpm} WPM.
+Include 2-3 modules, each with 2-3 lessons. Make the content engaging and progressively challenging.`;
+
             const ai = this.getGenerativeAI();
             if (!ai) {
-                throw new Error('Gemini API client is not initialized');
+                throw new Error('Gemini AI not initialized');
             }
 
             const model = ai.getGenerativeModel({ model: this.model });
-
-            const prompt = `Generate a structured typing practice learning plan as a JSON object with the following structure:
-{
-  "modules": [
-    {
-      "name": string,
-      "description": string,
-      "lessons": [
-        {
-          "title": string,
-          "description": string,
-          "content": string,
-          "targetWpm": number
-        }
-      ]
-    }
-  ]
-}
-
-The plan should be tailored for a ${params.level} level typist currently typing at ${params.currentWpm} WPM.
-Return only the JSON object without any markdown formatting.`;
-
             const result = await model.generateContent(prompt);
-            const text = result.response.text();
+            const response = result.response.text();
 
-            // Try to parse the response directly first
+            // Clean the response by removing any markdown formatting
+            const cleanedResponse = response
+                .replace(/```json\s*/g, '')
+                .replace(/```\s*/g, '')
+                .trim();
+
             try {
-                const parsedResponse = JSON.parse(text);
+                const parsedPlan = JSON.parse(cleanedResponse);
+
+                // Validate the structure
+                if (!parsedPlan.modules || !Array.isArray(parsedPlan.modules)) {
+                    throw new Error('Invalid plan structure: missing or invalid modules array');
+                }
+
+                // Validate each module and lesson
+                parsedPlan.modules.forEach((module: any, moduleIndex: number) => {
+                    if (!module.name || !module.description || !Array.isArray(module.lessons)) {
+                        throw new Error(`Invalid module structure at index ${moduleIndex}`);
+                    }
+                    module.lessons.forEach((lesson: any, lessonIndex: number) => {
+                        if (!lesson.title || !lesson.description || !lesson.content || typeof lesson.targetWpm !== 'number') {
+                            throw new Error(`Invalid lesson structure in module ${moduleIndex}, lesson ${lessonIndex}`);
+                        }
+                    });
+                });
+
                 return {
-                    ...parsedResponse,
                     success: true,
+                    modules: parsedPlan.modules,
                     provider: 'gemini'
                 };
-            } catch (initialError) {
-                // If direct parsing fails, try cleaning the response
-                const cleanJson = text.replace(/```json\n?|\n?```/g, '').trim();
-                try {
-                    const parsedResponse = JSON.parse(cleanJson);
-                    return {
-                        ...parsedResponse,
-                        success: true,
-                        provider: 'gemini'
-                    };
-                } catch (cleanedError) {
-                    console.error('Failed to parse Gemini response. Raw response:', text);
-                    throw new Error('Failed to parse learning plan response');
-                }
+            } catch (parseError) {
+                console.error('Failed to parse learning plan:', parseError);
+                console.error('Raw response:', response);
+                console.error('Cleaned response:', cleanedResponse);
+                throw new Error('Failed to parse learning plan');
             }
         } catch (error) {
-            console.error('Error in Gemini learning plan generation:', error);
+            console.error('Error generating learning plan:', error);
             throw error;
         }
     }
@@ -273,9 +317,9 @@ Return only the JSON object without any markdown formatting.`;
  * Ollama provider implementation
  */
 export class OllamaProvider implements LLMProvider {
-    name = 'ollama';
     private apiUrl: string;
     private model: string;
+    name = 'ollama';
 
     constructor(apiUrl?: string, model?: string) {
         // Normalize API URL to ensure it's properly formatted
@@ -285,7 +329,35 @@ export class OllamaProvider implements LLMProvider {
             : baseApiUrl + (baseApiUrl.endsWith('/api') ? '/generate' : '/api/generate');
 
         // Use provided model name or fallback to environment variable or default
-        this.model = model || process.env.OLLAMA_MODEL_NAME || 'llama3.2:latest';
+        this.model = model || process.env.OLLAMA_MODEL_NAME || 'llama2:latest';
+    }
+
+    async generate(prompt: string): Promise<string> {
+        try {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model: this.model,
+                    prompt: prompt,
+                    stream: false,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                throw new Error(`Ollama API error: ${response.status} ${response.statusText}${errorData ? ` - ${JSON.stringify(errorData)}` : ''
+                    }`);
+            }
+
+            const data = await response.json();
+            return data.response;
+        } catch (error) {
+            console.error('Error generating response from Ollama:', error);
+            throw error;
+        }
     }
 
     async isAvailable(): Promise<boolean> {
@@ -411,85 +483,37 @@ export class OllamaProvider implements LLMProvider {
 
     async generateLearningPlan(params: LearningPlanParams): Promise<GenerateLearningPlanResponse> {
         try {
-            console.log('Ollama provider: Starting learning plan generation');
-            console.log(`Generating plan for ${params.level} level with current WPM: ${params.currentWpm}`);
+            // Determine WPM and level based on params type
+            const wpm = params.type === 'level_based' ? params.currentWpm : params.wpm;
+            const level = params.type === 'level_based' ? params.level :
+                params.wpm < 30 ? 'beginner' :
+                    params.wpm < 60 ? 'intermediate' :
+                        'advanced';
 
-            const prompt = `Generate a structured typing practice plan for a ${params.level} typist with current speed of ${params.currentWpm} WPM.
-The plan should be organized into modules, with each module focusing on a specific skill area.
+            console.log('Generating learning plan with params:', { wpm, level });
 
-Format the response as a JSON object with the following structure:
-{
-  "modules": [
-    {
-      "name": "Module Name",
-      "description": "Brief description of the module's focus",
-      "lessons": [
-        {
-          "title": "Lesson Title",
-          "description": "Brief description of the lesson focus",
-          "content": "Practice text for typing (40-60 characters)",
-          "targetWpm": number
-        }
-      ]
-    }
-  ]
-}
+            const prompt = `Generate a typing practice plan for a ${level} level typist with current speed of ${wpm} WPM. 
+                The plan should include 6 modules, each with:
+                - A title
+                - A description
+                - Practice content (text to type)
+                - A target WPM that gradually increases from a starting point of ${Math.max(20, Math.floor(wpm * 0.8))} WPM
+                Format the response as a JSON array of modules.`;
 
-Create 3 modules, each with 6 lessons. Structure the modules as follows:
+            const response = await this.generate(prompt);
 
-For beginner level:
-- Module 1: Home Row Mastery
-- Module 2: Common Words and Patterns
-- Module 3: Basic Sentences and Punctuation
-
-For intermediate level:
-- Module 1: Speed Building
-- Module 2: Accuracy Improvement
-- Module 3: Advanced Patterns
-
-For advanced level:
-- Module 1: Speed Optimization
-- Module 2: Complex Text Patterns
-- Module 3: Professional Content
-
-Each lesson's targetWpm should progressively increase, starting from the user's current WPM.
-Ensure practice texts are interesting and relevant to the module's focus.`;
-
-            // Call Ollama API
-            console.log(`Ollama provider: Calling API at ${this.apiUrl} with model ${this.model}`);
-            const response = await fetch(this.apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    model: this.model,
-                    prompt: prompt,
-                    stream: false,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`Ollama API responded with status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            const generatedText = data.response || '';
-
-            // Parse the response as JSON
-            try {
-                const plan = JSON.parse(generatedText);
-                return {
-                    success: true,
-                    modules: plan.modules,
-                    provider: this.name
-                };
-            } catch (error) {
-                console.error('Failed to parse Ollama response as JSON:', error);
+            if (!response) {
+                console.error('Failed to generate learning plan');
                 return getFallbackLearningPlan(params);
             }
+
+            return {
+                success: true,
+                modules: JSON.parse(response),
+                provider: 'ollama'
+            };
         } catch (error) {
-            console.error('Error generating learning plan with Ollama:', error);
+            console.error('Error generating learning plan:', error);
             return getFallbackLearningPlan(params);
         }
     }
@@ -841,7 +865,13 @@ function getGenericSentences(): string[] {
 
 // Helper function to get fallback learning plan
 function getFallbackLearningPlan(params: LearningPlanParams): GenerateLearningPlanResponse {
-    const baseWpm = params.currentWpm;
+    // Determine WPM and level based on params type
+    const wpm = params.type === 'level_based' ? params.currentWpm : params.wpm;
+    const level = params.type === 'level_based' ? params.level :
+        params.wpm < 30 ? 'beginner' :
+            params.wpm < 60 ? 'intermediate' :
+                'advanced';
+
     const moduleStructure = {
         beginner: [
             {
@@ -852,37 +882,37 @@ function getFallbackLearningPlan(params: LearningPlanParams): GenerateLearningPl
                         title: "Home Row Basics",
                         description: "Learn the home row key positions",
                         content: "asdf jkl; asdf jkl; fjfjfj dkdkdk slslsl ajajaj",
-                        targetWpm: Math.max(20, Math.round(baseWpm * 0.8))
+                        targetWpm: Math.max(20, Math.round(wpm * 0.8))
                     },
                     {
                         title: "Left Hand Focus",
                         description: "Practice left hand keys",
                         content: "asdf asdf asdf asdf dad sad fad lad",
-                        targetWpm: Math.max(22, Math.round(baseWpm * 0.85))
+                        targetWpm: Math.max(22, Math.round(wpm * 0.85))
                     },
                     {
                         title: "Right Hand Focus",
                         description: "Practice right hand keys",
                         content: "jkl; jkl; jkl; jkl; kill silk milk jail",
-                        targetWpm: Math.max(24, Math.round(baseWpm * 0.9))
+                        targetWpm: Math.max(24, Math.round(wpm * 0.9))
                     },
                     {
                         title: "Alternating Hands",
                         description: "Practice alternating between hands",
                         content: "aj sk dl f; aj sk dl f; flash jail silk",
-                        targetWpm: Math.max(26, Math.round(baseWpm * 0.95))
+                        targetWpm: Math.max(26, Math.round(wpm * 0.95))
                     },
                     {
                         title: "Simple Words",
                         description: "Form basic words using home row",
                         content: "ask dad fall jack sail lake fall dash",
-                        targetWpm: Math.max(28, Math.round(baseWpm))
+                        targetWpm: Math.max(28, Math.round(wpm))
                     },
                     {
                         title: "Speed Challenge",
                         description: "Build speed with home row keys",
                         content: "ask all sad jacks fall; dad has silk",
-                        targetWpm: Math.max(30, Math.round(baseWpm * 1.1))
+                        targetWpm: Math.max(30, Math.round(wpm * 1.1))
                     }
                 ]
             },
@@ -894,37 +924,37 @@ function getFallbackLearningPlan(params: LearningPlanParams): GenerateLearningPl
                         title: "Common Three-Letter Words",
                         description: "Practice basic three-letter words",
                         content: "the and but for not yes can did was",
-                        targetWpm: Math.max(25, Math.round(baseWpm * 0.85))
+                        targetWpm: Math.max(25, Math.round(wpm * 0.85))
                     },
                     {
                         title: "Four-Letter Words",
                         description: "Common four-letter words",
                         content: "that what when here they have from",
-                        targetWpm: Math.max(27, Math.round(baseWpm * 0.9))
+                        targetWpm: Math.max(27, Math.round(wpm * 0.9))
                     },
                     {
                         title: "Five-Letter Words",
                         description: "Frequent five-letter words",
                         content: "there where about could would should",
-                        targetWpm: Math.max(29, Math.round(baseWpm * 0.95))
+                        targetWpm: Math.max(29, Math.round(wpm * 0.95))
                     },
                     {
                         title: "Common Patterns",
                         description: "Frequent letter combinations",
                         content: "ing tion ment ally ness able less ful",
-                        targetWpm: Math.max(31, Math.round(baseWpm))
+                        targetWpm: Math.max(31, Math.round(wpm))
                     },
                     {
                         title: "Word Combinations",
                         description: "Practice word pairs",
                         content: "right now, just then, but why, not here",
-                        targetWpm: Math.max(33, Math.round(baseWpm * 1.05))
+                        targetWpm: Math.max(33, Math.round(wpm * 1.05))
                     },
                     {
                         title: "Pattern Speed Drill",
                         description: "Quick pattern typing",
                         content: "ing and tion, ment to able, ness or less",
-                        targetWpm: Math.max(35, Math.round(baseWpm * 1.1))
+                        targetWpm: Math.max(35, Math.round(wpm * 1.1))
                     }
                 ]
             },
@@ -936,37 +966,37 @@ function getFallbackLearningPlan(params: LearningPlanParams): GenerateLearningPl
                         title: "Simple Sentences",
                         description: "Basic sentence structure",
                         content: "The cat sat. The dog ran. I can type.",
-                        targetWpm: Math.max(30, Math.round(baseWpm * 0.9))
+                        targetWpm: Math.max(30, Math.round(wpm * 0.9))
                     },
                     {
                         title: "Question Marks",
                         description: "Practice with questions",
                         content: "How are you? What time is it? Can you type?",
-                        targetWpm: Math.max(32, Math.round(baseWpm * 0.95))
+                        targetWpm: Math.max(32, Math.round(wpm * 0.95))
                     },
                     {
                         title: "Commas",
                         description: "Using commas in sentences",
                         content: "First, second, and third, I can type well.",
-                        targetWpm: Math.max(34, Math.round(baseWpm))
+                        targetWpm: Math.max(34, Math.round(wpm))
                     },
                     {
                         title: "Exclamations",
                         description: "Practice with excitement",
                         content: "Wow! That's amazing! I can type fast now!",
-                        targetWpm: Math.max(36, Math.round(baseWpm * 1.05))
+                        targetWpm: Math.max(36, Math.round(wpm * 1.05))
                     },
                     {
                         title: "Mixed Punctuation",
                         description: "Combine different punctuation marks",
                         content: "Ready? Set, go! How fast can you type?",
-                        targetWpm: Math.max(38, Math.round(baseWpm * 1.1))
+                        targetWpm: Math.max(38, Math.round(wpm * 1.1))
                     },
                     {
                         title: "Full Sentences",
                         description: "Complete sentences with punctuation",
                         content: "Type this! Can you do it? Yes, I can do it.",
-                        targetWpm: Math.max(40, Math.round(baseWpm * 1.15))
+                        targetWpm: Math.max(40, Math.round(wpm * 1.15))
                     }
                 ]
             }
@@ -1019,8 +1049,8 @@ function getFallbackLearningPlan(params: LearningPlanParams): GenerateLearningPl
         ]
     };
 
-    // Select the appropriate module structure based on user level
-    const modules = moduleStructure[params.level] || moduleStructure.beginner;
+    // Select the appropriate module structure based on determined level
+    const modules = moduleStructure[level] || moduleStructure.beginner;
 
     return {
         success: true,

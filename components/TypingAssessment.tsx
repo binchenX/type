@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import styled from 'styled-components';
 import TypingArea from './TypingArea';
-import { TypingState, ParsedMarkdownItem } from '@/types';
+import { TypingState } from '@/types';
 
 const AssessmentContainer = styled.div`
   max-width: 800px;
@@ -44,7 +44,15 @@ const AssessmentText = styled.p`
 `;
 
 interface TypingAssessmentProps {
-    onComplete: (level: 'beginner' | 'intermediate' | 'advanced', wpm: number) => void;
+    onComplete: (level: 'beginner' | 'intermediate' | 'advanced', wpm: number, assessmentData?: {
+        expectedText: string;
+        actualText: string;
+        accuracy: number;
+        errorPatterns: {
+            characterErrors: { [key: string]: number };
+            commonMistakes: Array<{ expected: string; actual: string; count: number }>;
+        };
+    }) => void;
 }
 
 const TypingAssessment: React.FC<TypingAssessmentProps> = ({ onComplete }) => {
@@ -59,7 +67,7 @@ const TypingAssessment: React.FC<TypingAssessmentProps> = ({ onComplete }) => {
         typingWordErrors: []
     });
 
-    const assessmentText = "The quick brown fox jumps over the lazy dog. This simple pangram contains every letter of the English alphabet at least once. Typing it is a good way to practice for beginners and test speed for advanced users.";
+    const assessmentText = "The quick";
 
     const handleSelfAssessment = (isNewbie: boolean) => {
         if (isNewbie) {
@@ -69,23 +77,99 @@ const TypingAssessment: React.FC<TypingAssessmentProps> = ({ onComplete }) => {
         }
     };
 
+    const analyzeErrorPatterns = (expected: string, actual: string) => {
+        const characterErrors: { [key: string]: number } = {};
+        const commonMistakes: Array<{ expected: string; actual: string; count: number }> = [];
+        const mistakes = new Map<string, number>();
+
+        const minLength = Math.min(expected.length, actual.length);
+        for (let i = 0; i < minLength; i++) {
+            if (expected[i] !== actual[i]) {
+                // Track individual character errors
+                if (!characterErrors[expected[i]]) {
+                    characterErrors[expected[i]] = 0;
+                }
+                characterErrors[expected[i]]++;
+
+                // Track common mistake patterns (pairs of expected vs actual)
+                const mistakeKey = `${expected[i]}->${actual[i]}`;
+                mistakes.set(mistakeKey, (mistakes.get(mistakeKey) || 0) + 1);
+            }
+        }
+
+        // Convert mistake patterns to array and sort by frequency
+        mistakes.forEach((count, key) => {
+            const [expected, actual] = key.split('->');
+            commonMistakes.push({ expected, actual, count });
+        });
+        commonMistakes.sort((a, b) => b.count - a.count);
+
+        return {
+            characterErrors,
+            commonMistakes: commonMistakes.slice(0, 5) // Keep top 5 most common mistakes
+        };
+    };
+
     const handleTestComplete = () => {
-        if (!typingState.startTime || !typingState.endTime) return;
+        // Add a small delay to ensure state updates are processed
+        setTimeout(() => {
+            if (!typingState.startTime || !typingState.endTime) {
+                console.error('TypingAssessment: Missing start or end time, aborting', {
+                    startTime: typingState.startTime,
+                    endTime: typingState.endTime
+                });
+                return;
+            }
 
-        const timeInMinutes = (typingState.endTime - typingState.startTime) / 1000 / 60;
-        const words = assessmentText.length / 5; // Standard: 5 characters = 1 word
-        const wpm = Math.round(words / timeInMinutes);
+            const actualText = typingState.typedChars.join('');
+            handleAssessmentComplete(typingState.startTime, typingState.endTime, actualText);
+        }, 100);
+    };
 
+    const handleAssessmentComplete = (startTime: number | null, endTime: number | null, actualText: string) => {
+        console.log('TypingAssessment: handleTestComplete called', { startTime, endTime });
+
+        if (!startTime || !endTime) {
+            console.error('TypingAssessment: Missing start or end time, aborting');
+            return;
+        }
+
+        const timeInMinutes = (endTime - startTime) / 60000; // Convert to minutes
+        const wordsTyped = actualText.trim().split(/\s+/).length;
+        const wpm = Math.round(wordsTyped / timeInMinutes);
+
+        // Calculate accuracy
+        const expectedChars = assessmentText.length;
+        const errors = Array.from(assessmentText).reduce((acc, char, i) =>
+            acc + (char !== actualText[i] ? 1 : 0), 0);
+        const accuracy = Math.round(((expectedChars - errors) / expectedChars) * 100);
+
+        // Analyze error patterns
+        const errorPatterns = analyzeErrorPatterns(assessmentText, actualText);
+
+        // Determine level based on WPM and accuracy
         let level: 'beginner' | 'intermediate' | 'advanced';
-        if (wpm < 30) {
+        if (wpm < 30 || accuracy < 90) {
             level = 'beginner';
-        } else if (wpm < 60) {
+        } else if (wpm < 60 || accuracy < 95) {
             level = 'intermediate';
         } else {
             level = 'advanced';
         }
 
-        onComplete(level, wpm);
+        console.log('TypingAssessment: Completed', {
+            level,
+            wpm,
+            accuracy,
+            errorPatterns
+        });
+
+        onComplete(level, wpm, {
+            expectedText: assessmentText,
+            actualText,
+            accuracy,
+            errorPatterns
+        });
     };
 
     if (step === 'question') {
@@ -120,6 +204,9 @@ const TypingAssessment: React.FC<TypingAssessmentProps> = ({ onComplete }) => {
                 typingState={typingState}
                 setTypingState={setTypingState}
                 onComplete={handleTestComplete}
+                updateStatistics={(expectedChar, typedChar) => {
+                    // Optional: Add any additional statistics tracking here
+                }}
             />
         </AssessmentContainer>
     );

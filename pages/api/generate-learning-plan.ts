@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import llmService from '@/services/llmService';
+import llmService, { LearningPlanParams, LevelBasedPlanParams, AssessmentBasedPlanParams } from '@/services/llmService';
 
 // Simple in-memory store for rate limiting
 const rateLimit = {
@@ -28,91 +28,100 @@ function getRateLimitInfo(ip: string) {
     return { remaining: rateLimit.max - record.count, isLimited };
 }
 
-interface LearningPlanRequest {
-    level: 'beginner' | 'intermediate' | 'advanced';
-    currentWpm: number;
+function validateLevelBasedParams(body: any): body is LevelBasedPlanParams {
+    return (
+        body.type === 'level_based' &&
+        typeof body.level === 'string' &&
+        ['beginner', 'intermediate', 'advanced'].includes(body.level) &&
+        typeof body.currentWpm === 'number'
+    );
+}
+
+function validateAssessmentParams(body: any): body is AssessmentBasedPlanParams {
+    return (
+        body.type === 'assessment' &&
+        typeof body.expectedText === 'string' &&
+        typeof body.actualText === 'string' &&
+        typeof body.wpm === 'number'
+    );
 }
 
 export default async function handler(
     req: NextApiRequest,
     res: NextApiResponse
 ) {
+    console.log('API: Received request for generate-learning-plan');
+    console.log('API: Request method:', req.method);
+
     if (req.method !== 'POST') {
         console.log('API: Rejected non-POST request:', req.method);
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
     // Log the raw request body for debugging
-    console.log('API: Raw request body:', req.body);
+    console.log('API: Raw request body:', JSON.stringify(req.body, null, 2));
 
-    // Get client IP
+    // Get client IP and handle rate limiting
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
     const clientIp = Array.isArray(ip) ? ip[0] : ip;
+    console.log('API: Client IP:', clientIp);
 
-    // Check rate limit
     const { remaining, isLimited } = getRateLimitInfo(clientIp);
+    console.log('API: Rate limit info:', { remaining, isLimited });
 
-    // Set rate limit headers
     res.setHeader('X-RateLimit-Limit', rateLimit.max);
     res.setHeader('X-RateLimit-Remaining', Math.max(0, remaining));
 
     if (isLimited) {
+        console.log('API: Request rate limited for IP:', clientIp);
         return res.status(429).json({ error: 'Too many requests, please try again later.' });
     }
 
-    // Validate request body
-    const { level, currentWpm } = req.body;
-    console.log('API: Parsed request parameters:', {
-        level,
-        currentWpm,
-        levelType: typeof level,
-        wpmType: typeof currentWpm,
-        rawBody: req.body
-    });
+    // Validate request body based on type
+    const body = req.body;
+    let params: LearningPlanParams;
 
-    // More detailed validation
-    if (!level) {
-        console.log('API: Missing level parameter');
+    if (!body.type) {
+        console.log('API: Missing type in request body');
         return res.status(400).json({
-            error: 'Missing required field: level',
-            receivedBody: req.body
+            error: 'Missing required field: type',
+            receivedBody: body
         });
     }
 
-    if (currentWpm === undefined || currentWpm === null) {
-        console.log('API: Missing currentWpm parameter');
-        return res.status(400).json({
-            error: 'Missing required field: currentWpm',
-            receivedBody: req.body
-        });
-    }
+    console.log('API: Request type:', body.type);
 
-    // Validate level value
-    if (!['beginner', 'intermediate', 'advanced'].includes(level)) {
-        console.log('API: Invalid level value:', level);
+    if (body.type === 'level_based') {
+        console.log('API: Validating level-based parameters');
+        if (!validateLevelBasedParams(body)) {
+            console.log('API: Invalid level-based parameters:', body);
+            return res.status(400).json({
+                error: 'Invalid level-based parameters',
+                receivedBody: body
+            });
+        }
+        params = body;
+    } else if (body.type === 'assessment') {
+        console.log('API: Validating assessment parameters');
+        if (!validateAssessmentParams(body)) {
+            console.log('API: Invalid assessment parameters:', body);
+            return res.status(400).json({
+                error: 'Invalid assessment parameters',
+                receivedBody: body
+            });
+        }
+        params = body;
+    } else {
+        console.log('API: Invalid type:', body.type);
         return res.status(400).json({
-            error: 'Invalid level value. Must be one of: beginner, intermediate, advanced',
-            receivedBody: req.body
-        });
-    }
-
-    // Parse and validate currentWpm
-    const parsedWpm = Number(currentWpm);
-    if (isNaN(parsedWpm)) {
-        console.log('API: Invalid currentWpm value:', currentWpm);
-        return res.status(400).json({
-            error: 'currentWpm must be a valid number',
-            receivedBody: req.body
+            error: 'Invalid type. Must be either "level_based" or "assessment"',
+            receivedBody: body
         });
     }
 
     try {
-        console.log('API: Generating learning plan with params:', { level, currentWpm: parsedWpm });
-        // Generate learning plan using LLM service
-        const response = await llmService.generateLearningPlan({
-            level: level as 'beginner' | 'intermediate' | 'advanced',
-            currentWpm: parsedWpm
-        });
+        console.log('API: Generating learning plan with params:', JSON.stringify(params, null, 2));
+        const response = await llmService.generateLearningPlan(params);
         console.log('API: Successfully generated plan:', {
             success: response.success,
             moduleCount: response.modules?.length || 0,

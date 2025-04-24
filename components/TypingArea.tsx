@@ -342,6 +342,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
         // If typing has not started yet, record the start time
         if (!newTypingState.startTime) {
+            console.log('TypingArea: Setting initial start time');
             newTypingState.startTime = Date.now();
         }
 
@@ -356,7 +357,10 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                 newTypingState.errors++;
 
                 // Add to typing errors array for detailed error tracking
-                newTypingState.typingErrors?.push({
+                if (!newTypingState.typingErrors) {
+                    newTypingState.typingErrors = [];
+                }
+                newTypingState.typingErrors.push({
                     index: currentPosition - 1,
                     expected: expectedChar,
                     actual: typedChar
@@ -371,18 +375,37 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         // Update the current position in the text
         newTypingState.currentPosition = currentPosition;
 
-        // Remove the logic for word error detection as it will be handled
-        // at the end of each typing session in the parent component
-
         // Check if typing is complete
         if (currentPosition === text.length) {
-            newTypingState.endTime = Date.now();
+            console.log('TypingArea: Text completion detected');
+
+            // Set timing information
+            const now = Date.now();
+            newTypingState.startTime = newTypingState.startTime || (now - 1000); // Fallback if no start time
+            newTypingState.endTime = now;
+
+            console.log('TypingArea: Setting timing info:', {
+                startTime: newTypingState.startTime,
+                endTime: newTypingState.endTime,
+                duration: (newTypingState.endTime - newTypingState.startTime) / 1000
+            });
+
+            // Update state first
             setTypingState(newTypingState);
 
-            // Small delay to allow state to update before calling onComplete
+            // Wait for state to be updated before calling onComplete
             setTimeout(() => {
+                // At this point we know both times are set
+                const startTime = newTypingState.startTime!;
+                const endTime = newTypingState.endTime!;
+
+                console.log('TypingArea: Calling onComplete with timing:', {
+                    startTime,
+                    endTime,
+                    duration: (endTime - startTime) / 1000
+                });
                 onComplete();
-            }, 500);
+            }, 100);
         } else {
             // Update typing state
             setTypingState(newTypingState);
