@@ -88,20 +88,17 @@ export class GeminiProvider implements LLMProvider {
     }
 
     private getGenerativeAI() {
-        console.log('Gemini provider: getGenerativeAI() called');
+        console.log('Gemini provider: Initializing');
         if (!this.genAI && this.apiKey) {
-            console.log('Gemini provider: Creating new GoogleGenerativeAI instance');
             try {
                 this.genAI = new GoogleGenerativeAI(this.apiKey);
-                console.log('Gemini provider: GoogleGenerativeAI instance created successfully');
+                console.log('Gemini provider: Initialized successfully');
             } catch (error) {
-                console.error('Gemini provider: Error creating GoogleGenerativeAI instance:', error);
+                console.error('Gemini provider: Initialization failed');
                 return null;
             }
         } else if (!this.apiKey) {
-            console.error('Gemini provider: Cannot create GoogleGenerativeAI - No API key');
-        } else {
-            console.log('Gemini provider: Using existing GoogleGenerativeAI instance');
+            console.error('Gemini provider: No API key available');
         }
         return this.genAI;
     }
@@ -139,7 +136,7 @@ export class GeminiProvider implements LLMProvider {
 
             console.log(`Gemini provider: Creating prompt for characters: ${charsList}`);
             const prompt = buildPrompt(charsList);
-            console.log('Gemini provider: Prompt created:', prompt);
+            console.log(`Gemini provider: Created prompt [length: ${prompt.length}]`);
 
             // Get an instance of the generative AI
             console.log('Gemini provider: Initializing Gemini API client');
@@ -432,9 +429,9 @@ export class LLMService {
     constructor(config?: LLMServiceConfig) {
         // Check environment variables
         console.log('LLM Service Environment Variables:');
-        console.log('  GEMINI_API_KEY available:', Boolean(process.env.GEMINI_API_KEY));
-        console.log('  ENABLE_OLLAMA value:', process.env.ENABLE_OLLAMA);
-        console.log('  OLLAMA_API_URL:', process.env.OLLAMA_API_URL || 'Not provided (will use default)');
+        console.log('  GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '[REDACTED]' : 'Not provided');
+        console.log('  ENABLE_OLLAMA:', process.env.ENABLE_OLLAMA);
+        console.log('  OLLAMA_API_URL:', '[REDACTED]');
         console.log('  OLLAMA_MODEL_NAME:', process.env.OLLAMA_MODEL_NAME || 'Not provided (will use default)');
         console.log('  PREFERRED_LLM_PROVIDER:', process.env.PREFERRED_LLM_PROVIDER || 'Not provided (will use default)');
 
@@ -452,14 +449,14 @@ export class LLMService {
             preferredProvider: config?.preferredProvider
         };
 
-        // Log configuration (with API key redacted)
+        // Log configuration (with sensitive data redacted)
         console.log('LLM Service Configuration:');
         console.log('  Gemini:');
         console.log(`    Enabled: ${this.config.gemini.enabled}`);
-        console.log(`    API Key: ${this.config.gemini.apiKey ? '[REDACTED]' : 'Not provided'}`);
+        console.log('    API Key: [REDACTED]');
         console.log('  Ollama:');
         console.log(`    Enabled: ${this.config.ollama.enabled}`);
-        console.log(`    API URL: ${this.config.ollama.apiUrl}`);
+        console.log('    API URL: [REDACTED]');
         console.log(`    Model: ${this.config.ollama.modelName}`);
         console.log(`  Preferred Provider: ${this.config.preferredProvider || 'None (default order)'}`);
 
