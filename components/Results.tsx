@@ -463,7 +463,7 @@ const Results: React.FC<ResultsProps> = ({
         throw new Error(data.error || 'Failed to generate practice text');
       }
 
-      console.log('Generated practice text using provider:', data.provider);
+      console.log('Generated practice text using llm', data.provider);
 
       // Check if practiceSections exists in the response
       if (!data.practiceSections || !Array.isArray(data.practiceSections)) {

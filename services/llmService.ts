@@ -10,6 +10,7 @@ export interface GeneratePracticeResponse {
     practiceSections: string[];
     prompt?: string;
     error?: string;
+    provider?: string;
     serviceInfo?: {
         availableProviders: string[];
         preferredProvider: string | null;
@@ -497,6 +498,7 @@ export class LLMService {
                     console.log(`USING ${provider.name.toUpperCase()} PROVIDER FOR TEXT GENERATION`);
                     console.log(`---------------------------------------`);
                     const result = await provider.generatePracticeText(errorFrequencyMap);
+                    result.provider = provider.name;
                     result.text = `${result.text} (via ${provider.name})`;
                     return result;
                 }
