@@ -13,23 +13,42 @@ const PlanContainer = styled.div`
 const ModuleTitle = styled.h2`
   margin-bottom: 1rem;
   color: var(--text);
+  font-size: 1.75rem;
+  font-weight: 600;
+  border-bottom: 2px solid var(--primary);
+  padding-bottom: 0.5rem;
 `;
 
 const ModuleDescription = styled.p`
   margin-bottom: 2rem;
   color: var(--text-light);
   line-height: 1.6;
+  font-size: 1.1rem;
 `;
 
 const LessonTitle = styled.h3`
   margin-bottom: 1rem;
   color: var(--text);
+  font-size: 1.4rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &:before {
+    content: '▶';
+    color: var(--primary);
+    font-size: 1rem;
+  }
 `;
 
 const LessonDescription = styled.p`
   margin-bottom: 2rem;
   color: var(--text-light);
   line-height: 1.6;
+  font-size: 1.1rem;
+  padding-left: 1.5rem;
+  border-left: 3px solid var(--background-light);
 `;
 
 const ProgressBar = styled.div`
@@ -47,6 +66,36 @@ const ProgressFill = styled.div<{ width: number }>`
   background-color: var(--primary);
   border-radius: 4px;
   transition: width 0.3s ease;
+`;
+
+const ProgressCounter = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  color: var(--text-light);
+  font-size: 0.9rem;
+`;
+
+const ProgressPill = styled.span`
+  background-color: var(--background-light);
+  padding: 0.4rem 0.8rem;
+  border-radius: 1rem;
+  color: var(--text);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  
+  &:before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background-color: var(--primary);
+    border-radius: 50%;
+  }
 `;
 
 const Button = styled.button<{ primary?: boolean }>`
@@ -227,10 +276,14 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
             <ProgressBar>
                 <ProgressFill width={progress} />
             </ProgressBar>
-            <div style={{ textAlign: 'right', marginBottom: '1rem', color: 'var(--text-light)' }}>
-                Module {currentModuleIndex + 1} of {modules.length} -
-                Lesson {currentLessonIndex + 1} of {currentModule.lessons.length}
-            </div>
+            <ProgressCounter>
+                <ProgressPill>
+                    Module {currentModuleIndex + 1} of {modules.length}
+                </ProgressPill>
+                <ProgressPill>
+                    Lesson {currentLessonIndex + 1} of {currentModule.lessons.length}
+                </ProgressPill>
+            </ProgressCounter>
 
             <ModuleTitle>{currentModule.name}</ModuleTitle>
             <ModuleDescription>{currentModule.description}</ModuleDescription>
