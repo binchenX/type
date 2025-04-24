@@ -18,6 +18,8 @@ import {
     loadTypingStateFromLocalStorage,
     replaceQuotes
 } from '@/utils/fileLoader';
+import TypingAssessment from '@/components/TypingAssessment';
+import LearningPlan from '@/components/LearningPlan';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -106,6 +108,9 @@ export default function Home() {
     const [practiceMode, setPracticeMode] = useState<'regular' | 'focused'>('regular');
     const [showUploadArea, setShowUploadArea] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [mode, setMode] = useState<'assessment' | 'learning' | 'practice'>('assessment');
+    const [userLevel, setUserLevel] = useState<'beginner' | 'intermediate' | 'advanced' | null>(null);
+    const [userWpm, setUserWpm] = useState<number>(0);
 
     // Load content from localStorage or public directory on initial component mount
     useEffect(() => {
@@ -488,11 +493,25 @@ export default function Home() {
         }
     };
 
+    const handleAssessmentComplete = (level: 'beginner' | 'intermediate' | 'advanced', wpm: number) => {
+        setUserLevel(level);
+        setUserWpm(wpm);
+        setMode('learning');
+    };
+
+    const handleLearningComplete = () => {
+        setMode('practice');
+    };
+
+    const handleExitLearning = () => {
+        setMode('practice');
+    };
+
     return (
         <>
             <Head>
                 <title>Typing Practice</title>
-                <meta name="description" content="Improve your typing skills by practicing with your own texts" />
+                <meta name="description" content="Improve your typing skills with personalized practice" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <link rel="icon" href="/favicon.ico" />
             </Head>
@@ -500,10 +519,12 @@ export default function Home() {
             <Container className="container">
                 <Header>
                     <Title>
-                        {practiceMode === 'focused' ? 'Focused Typing Practice' : 'Typing Practice'}
+                        {mode === 'assessment' ? 'Typing Skill Assessment' :
+                            mode === 'learning' ? 'Personalized Learning Plan' :
+                                'Typing Practice'}
                     </Title>
                     <div style={{ display: 'flex', gap: '1rem' }}>
-                        {!isCompleted && parsedItems.length > 0 && (
+                        {mode === 'practice' && !isCompleted && parsedItems.length > 0 && (
                             <>
                                 <button
                                     onClick={toggleUploadArea}
@@ -538,56 +559,64 @@ export default function Home() {
                 </Header>
 
                 <Main>
-                    {isLoading ? (
-                        <div style={{ textAlign: 'center', padding: '2rem' }}>
-                            <p>Loading typing content...</p>
-                        </div>
-                    ) : showUploadArea ? (
-                        <UploadArea onUpload={handleFileUpload} />
-                    ) : (
-                        <>
-                            {isCompleted ? (
-                                <>
+                    {mode === 'assessment' && (
+                        <TypingAssessment onComplete={handleAssessmentComplete} />
+                    )}
+
+                    {mode === 'learning' && userLevel && (
+                        <LearningPlan
+                            userLevel={userLevel}
+                            initialWpm={userWpm}
+                            onComplete={handleLearningComplete}
+                            onExit={handleExitLearning}
+                        />
+                    )}
+
+                    {mode === 'practice' && (
+                        isLoading ? (
+                            <div style={{ textAlign: 'center', padding: '2rem' }}>
+                                <p>Loading typing content...</p>
+                            </div>
+                        ) : showUploadArea ? (
+                            <UploadArea onUpload={handleFileUpload} />
+                        ) : (
+                            <>
+                                {isCompleted ? (
                                     <Results
                                         parsedItems={parsedItems}
                                         onReset={resetPractice}
                                         errorFrequencyMap={errorFrequencyMap}
                                         onStartNewPractice={handleStartNewPractice}
-                                        // Pass accumulated errors instead of just current section errors
                                         typingErrors={accumulatedErrors.typingErrors}
                                         typingWordErrors={accumulatedErrors.typingWordErrors}
                                     />
-                                </>
-                            ) : (
-                                <>
-                                    <Stats
-                                        currentIndex={currentItemIndex}
-                                        totalItems={parsedItems.length}
-                                        typingState={typingState}
-                                        currentText={getCurrentContent()}
-                                    />
-
-                                    <div style={{ position: 'relative' }}>
-                                        <KeyboardTips>
-                                            Press <kbd>Alt</kbd>+<kbd>←</kbd> to go back, <kbd>Alt</kbd>+<kbd>→</kbd> to skip
-                                        </KeyboardTips>
-                                        <TypingArea
-                                            text={getCurrentContent()}
-                                            typingState={{
-                                                ...typingState,
-                                                typingErrors: typingState.typingErrors || [],
-                                                typingWordErrors: typingState.typingWordErrors || []
-                                            }}
-                                            setTypingState={setTypingState}
-                                            onComplete={moveToNextItem}
-                                            updateStatistics={updateStatistics}
-                                            onSkipForward={skipCurrentItem}
-                                            onSkipBackward={moveToPreviousItem}
+                                ) : (
+                                    <>
+                                        <Stats
+                                            currentIndex={currentItemIndex}
+                                            totalItems={parsedItems.length}
+                                            typingState={typingState}
+                                            currentText={getCurrentContent()}
                                         />
-                                    </div>
-                                </>
-                            )}
-                        </>
+
+                                        <div style={{ position: 'relative' }}>
+                                            <KeyboardTips>
+                                                Press <kbd>Alt</kbd>+<kbd>←</kbd> to go back, <kbd>Alt</kbd>+<kbd>→</kbd> to skip
+                                            </KeyboardTips>
+                                            <TypingArea
+                                                text={getCurrentContent()}
+                                                typingState={typingState}
+                                                setTypingState={setTypingState}
+                                                onComplete={moveToNextItem}
+                                                updateStatistics={updateStatistics}
+                                                onSkipForward={skipCurrentItem}
+                                                onSkipBackward={moveToPreviousItem}
+                                            />
+                                        </div>
+                                    </>
+                                )}
+                            </>
+                        )
                     )}
                 </Main>
             </Container>
