@@ -57,16 +57,6 @@ interface TypingAssessmentProps {
 
 const TypingAssessment: React.FC<TypingAssessmentProps> = ({ onComplete }) => {
     const [step, setStep] = useState<'question' | 'test'>('question');
-    const [typingState, setTypingState] = useState<TypingState>({
-        startTime: null,
-        endTime: null,
-        currentPosition: 0,
-        errors: 0,
-        typedChars: [],
-        typingErrors: [],
-        typingWordErrors: []
-    });
-
     const assessmentText = "The quick";
 
     const handleSelfAssessment = (isNewbie: boolean) => {
@@ -85,19 +75,16 @@ const TypingAssessment: React.FC<TypingAssessmentProps> = ({ onComplete }) => {
         const minLength = Math.min(expected.length, actual.length);
         for (let i = 0; i < minLength; i++) {
             if (expected[i] !== actual[i]) {
-                // Track individual character errors
                 if (!characterErrors[expected[i]]) {
                     characterErrors[expected[i]] = 0;
                 }
                 characterErrors[expected[i]]++;
 
-                // Track common mistake patterns (pairs of expected vs actual)
                 const mistakeKey = `${expected[i]}->${actual[i]}`;
                 mistakes.set(mistakeKey, (mistakes.get(mistakeKey) || 0) + 1);
             }
         }
 
-        // Convert mistake patterns to array and sort by frequency
         mistakes.forEach((count, key) => {
             const [expected, actual] = key.split('->');
             commonMistakes.push({ expected, actual, count });
@@ -106,35 +93,13 @@ const TypingAssessment: React.FC<TypingAssessmentProps> = ({ onComplete }) => {
 
         return {
             characterErrors,
-            commonMistakes: commonMistakes.slice(0, 5) // Keep top 5 most common mistakes
+            commonMistakes: commonMistakes.slice(0, 5)
         };
     };
 
-    const handleTestComplete = () => {
-        // Add a small delay to ensure state updates are processed
-        setTimeout(() => {
-            if (!typingState.startTime || !typingState.endTime) {
-                console.error('TypingAssessment: Missing start or end time, aborting', {
-                    startTime: typingState.startTime,
-                    endTime: typingState.endTime
-                });
-                return;
-            }
-
-            const actualText = typingState.typedChars.join('');
-            handleAssessmentComplete(typingState.startTime, typingState.endTime, actualText);
-        }, 100);
-    };
-
-    const handleAssessmentComplete = (startTime: number | null, endTime: number | null, actualText: string) => {
-        console.log('TypingAssessment: handleTestComplete called', { startTime, endTime });
-
-        if (!startTime || !endTime) {
-            console.error('TypingAssessment: Missing start or end time, aborting');
-            return;
-        }
-
-        const timeInMinutes = (endTime - startTime) / 60000; // Convert to minutes
+    const handleTestComplete = (finalState: TypingState) => {
+        const actualText = finalState.typedChars.join('');
+        const timeInMinutes = ((finalState.endTime || 0) - (finalState.startTime || 0)) / 60000;
         const wordsTyped = actualText.trim().split(/\s+/).length;
         const wpm = Math.round(wordsTyped / timeInMinutes);
 
@@ -201,8 +166,6 @@ const TypingAssessment: React.FC<TypingAssessmentProps> = ({ onComplete }) => {
             </AssessmentText>
             <TypingArea
                 text={assessmentText}
-                typingState={typingState}
-                setTypingState={setTypingState}
                 onComplete={handleTestComplete}
                 updateStatistics={(expectedChar, typedChar) => {
                     // Optional: Add any additional statistics tracking here

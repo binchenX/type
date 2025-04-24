@@ -167,9 +167,9 @@ const ArrowIcon = styled.span`
 
 interface TypingAreaProps {
     text: string;
-    typingState: TypingState;
-    setTypingState: React.Dispatch<React.SetStateAction<TypingState>>;
-    onComplete: () => void;
+    typingState?: TypingState;
+    setTypingState?: React.Dispatch<React.SetStateAction<TypingState>>;
+    onComplete: (finalState: TypingState) => void;
     updateStatistics?: (expectedChar: string, typedChar: string) => void;
     onSkipForward?: () => void;
     onSkipBackward?: () => void;
@@ -233,8 +233,8 @@ const LiveErrorStats = ({
 
 const TypingArea: React.FC<TypingAreaProps> = ({
     text,
-    typingState,
-    setTypingState,
+    typingState: externalTypingState,
+    setTypingState: setExternalTypingState,
     onComplete,
     updateStatistics,
     onSkipForward,
@@ -251,6 +251,19 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         endIndex: number;
         typedChars: string[];
     } | null>(null);
+
+    const [internalTypingState, setInternalTypingState] = useState<TypingState>({
+        startTime: null,
+        endTime: null,
+        currentPosition: 0,
+        errors: 0,
+        typedChars: [],
+        typingErrors: [],
+        typingWordErrors: []
+    });
+
+    const typingState = externalTypingState || internalTypingState;
+    const setTypingState = setExternalTypingState || setInternalTypingState;
 
     // Reset when text changes (when moving to a new item)
     useEffect(() => {
@@ -378,38 +391,14 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         // Check if typing is complete
         if (currentPosition === text.length) {
             console.log('TypingArea: Text completion detected');
-
-            // Set timing information
-            const now = Date.now();
-            newTypingState.startTime = newTypingState.startTime || (now - 1000); // Fallback if no start time
-            newTypingState.endTime = now;
-
-            console.log('TypingArea: Setting timing info:', {
-                startTime: newTypingState.startTime,
-                endTime: newTypingState.endTime,
-                duration: (newTypingState.endTime - newTypingState.startTime) / 1000
-            });
-
-            // Update state first
+            newTypingState.endTime = Date.now();
             setTypingState(newTypingState);
-
-            // Wait for state to be updated before calling onComplete
-            setTimeout(() => {
-                // At this point we know both times are set
-                const startTime = newTypingState.startTime!;
-                const endTime = newTypingState.endTime!;
-
-                console.log('TypingArea: Calling onComplete with timing:', {
-                    startTime,
-                    endTime,
-                    duration: (endTime - startTime) / 1000
-                });
-                onComplete();
-            }, 100);
-        } else {
-            // Update typing state
-            setTypingState(newTypingState);
+            onComplete(newTypingState);
+            return;
         }
+
+        // Update typing state
+        setTypingState(newTypingState);
     };
 
     // Keep focus on input area
