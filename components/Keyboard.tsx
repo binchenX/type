@@ -54,9 +54,51 @@ const Keyboard: React.FC<KeyboardProps> = ({ nextChar }) => {
         ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/']
     ];
 
+    // Define the middle point of the keyboard for determining left/right side
+    const middleKeys: Record<string, string> = {
+        '0': 't',  // First row
+        '1': 'y',  // Second row
+        '2': 'h',  // Third row
+        '3': 'n'   // Fourth row
+    };
+
     const isHighlighted = (key: string) => {
         if (!nextChar) return false;
+
+        // Handle space key separately
+        if (nextChar === ' ' && key === 'Space') return true;
+
+        // For all other keys, compare case-insensitively
         return key.toLowerCase() === nextChar.toLowerCase();
+    };
+
+    const isShiftNeeded = () => {
+        if (!nextChar) return false;
+        return nextChar !== nextChar.toLowerCase();
+    };
+
+    const isLeftShift = (char: string | null) => {
+        if (!char) return false;
+        const lowerChar = char.toLowerCase();
+
+        // Check each row to find which side of the keyboard the character is on
+        for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+            const middleKey = middleKeys[rowIndex.toString()];
+            const row = rows[rowIndex];
+            const charIndex = row.indexOf(lowerChar);
+
+            if (charIndex !== -1) {
+                // If the character is in this row, find its position relative to the middle
+                const middleIndex = row.indexOf(middleKey) || Math.floor(row.length / 2);
+                return charIndex >= middleIndex; // Return true if char is on right side
+            }
+        }
+        return false;
+    };
+
+    const shouldHighlightShift = (position: 'left' | 'right') => {
+        if (!isShiftNeeded()) return false;
+        return position === 'left' ? isLeftShift(nextChar) : !isLeftShift(nextChar);
     };
 
     return (
@@ -75,13 +117,28 @@ const Keyboard: React.FC<KeyboardProps> = ({ nextChar }) => {
                 </KeyboardRow>
             ))}
             <KeyboardRow>
-                <Key width="60px">Shift</Key>
+                <Key
+                    width="60px"
+                    isHighlighted={shouldHighlightShift('left')}
+                >
+                    Shift
+                </Key>
                 <Key width="60px">Ctrl</Key>
                 <Key width="60px">Alt</Key>
-                <Key width="300px">Space</Key>
+                <Key
+                    width="300px"
+                    isHighlighted={isHighlighted('Space')}
+                >
+                    Space
+                </Key>
                 <Key width="60px">Alt</Key>
                 <Key width="60px">Ctrl</Key>
-                <Key width="60px">Shift</Key>
+                <Key
+                    width="60px"
+                    isHighlighted={shouldHighlightShift('right')}
+                >
+                    Shift
+                </Key>
             </KeyboardRow>
         </KeyboardContainer>
     );
