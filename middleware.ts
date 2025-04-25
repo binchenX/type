@@ -41,14 +41,16 @@ function addSecurityHeaders(response: NextResponse) {
     response.headers.set('X-Content-Type-Options', 'nosniff');
     // Control referrer information
     response.headers.set('Referrer-Policy', 'origin-when-cross-origin');
-    // Content Security Policy
+    // Content Security Policy - simplified to allow AdSense
     response.headers.set('Content-Security-Policy',
         "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-        "font-src 'self' data: https://fonts.gstatic.com; " +
-        "img-src 'self' data: https:; " +
-        "connect-src 'self' https://generativelanguage.googleapis.com;"
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:; " +
+        "style-src 'self' 'unsafe-inline' https: data:; " +
+        "img-src 'self' data: https: blob:; " +
+        "font-src 'self' data: https:; " +
+        "connect-src 'self' https:; " +
+        "frame-src 'self' https:; " +
+        "object-src 'none';"
     );
     // XSS Protection
     response.headers.set('X-XSS-Protection', '1; mode=block');
