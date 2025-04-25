@@ -11,6 +11,49 @@ const PlanContainer = styled.div`
   margin: 0 auto;
 `;
 
+// New compact header component
+const CompactHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--background-light);
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border);
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+`;
+
+const HeaderTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  
+  svg {
+    width: 20px;
+    height: 20px;
+    color: var(--primary);
+  }
+`;
+
+const HeaderPills = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: space-between;
+  }
+`;
+
 const ModuleTitle = styled.h2`
   margin-bottom: 1rem;
   color: var(--text);
@@ -88,6 +131,7 @@ const ProgressPill = styled.span`
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  font-size: 0.9rem;
   
   &:before {
     content: '';
@@ -304,17 +348,27 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
 
     return (
         <PlanContainer>
+            <CompactHeader>
+                <HeaderTitle>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                    </svg>
+                    AI Learning Plan
+                </HeaderTitle>
+                <HeaderPills>
+                    <ProgressPill>
+                        Module {currentModuleIndex + 1} of {modules.length}
+                    </ProgressPill>
+                    <ProgressPill>
+                        Lesson {currentLessonIndex + 1} of {currentModule.lessons.length}
+                    </ProgressPill>
+                </HeaderPills>
+            </CompactHeader>
+
             <ProgressBar>
                 <ProgressFill width={progress} />
             </ProgressBar>
-            <ProgressCounter>
-                <ProgressPill>
-                    Module {currentModuleIndex + 1} of {modules.length}
-                </ProgressPill>
-                <ProgressPill>
-                    Lesson {currentLessonIndex + 1} of {currentModule.lessons.length}
-                </ProgressPill>
-            </ProgressCounter>
 
             <ModuleTitle>{currentModule.name}</ModuleTitle>
             <ModuleDescription>{currentModule.description}</ModuleDescription>

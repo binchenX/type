@@ -740,13 +740,14 @@ export default function Home() {
             </ToolbarContainer>
 
             <Container className="container">
-                <Header>
-                    <Title>
-                        {mode === 'assessment' ? 'AI-Powered Typing Skill Assessment' :
-                            mode === 'learning' ? 'AI-Generated Learning Plan' :
+                <Header style={{ marginBottom: mode === 'learning' ? '0.5rem' : '2rem' }}>
+                    {mode !== 'learning' && (
+                        <Title>
+                            {mode === 'assessment' ? 'AI-Powered Typing Skill Assessment' :
                                 mode === 'custom' ? 'Custom Text Practice' :
                                     'AI-Powered Typing Practice'}
-                    </Title>
+                        </Title>
+                    )}
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         {mode === 'practice' && !isCompleted && parsedItems.length > 0 && (
                             <>
