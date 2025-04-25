@@ -47,6 +47,58 @@ const Main = styled.main`
   gap: 2rem;
 `;
 
+// Toolbar components
+const ToolbarContainer = styled.div`
+  display: flex;
+  align-items: center;
+  background-color: #202020;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  overflow-x: auto;
+`;
+
+const ToolbarDivider = styled.div`
+  width: 1px;
+  height: 24px;
+  background-color: #3a3a3a;
+  margin: 0 10px;
+`;
+
+const ToolbarButton = styled.button<{ active?: boolean }>`
+  background-color: transparent;
+  color: ${props => props.active ? '#ffcc00' : '#aaaaaa'};
+  border: none;
+  font-weight: ${props => props.active ? '600' : '500'};
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  white-space: nowrap;
+  
+  &:hover {
+    color: ${props => props.active ? '#ffcc00' : 'white'};
+  }
+  
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+`;
+
+const ToolbarGroup = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+const ToolbarSpacer = styled.div`
+  flex: 1;
+`;
+
 // New styled component for keyboard shortcuts tips
 const KeyboardTips = styled.div`
   position: absolute;
@@ -83,6 +135,35 @@ const KeyboardTips = styled.div`
   }
 `;
 
+// Icon components
+const LessonsIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+    </svg>
+);
+
+const AssessmentIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
+);
+
+const QuotesIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path>
+        <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path>
+    </svg>
+);
+
+const CustomIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+    </svg>
+);
+
 export default function Home() {
     const [uploadedContent, setUploadedContent] = useState<string | null>(null);
     const [parsedItems, setParsedItems] = useState<ParsedMarkdownItem[]>([]);
@@ -109,8 +190,9 @@ export default function Home() {
     const [practiceMode, setPracticeMode] = useState<'regular' | 'focused'>('regular');
     const [showUploadArea, setShowUploadArea] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [mode, setMode] = useState<'assessment' | 'learning' | 'practice'>('assessment');
+    const [mode, setMode] = useState<'assessment' | 'learning' | 'practice' | 'quotes' | 'custom'>('assessment');
     const [userLevel, setUserLevel] = useState<'beginner' | 'intermediate' | 'advanced' | null>(null);
+    const [activeLevel, setActiveLevel] = useState<'beginner' | 'intermediate' | 'advanced' | null>(null);
     const [userWpm, setUserWpm] = useState<number>(0);
     const [initialWpm, setInitialWpm] = useState<number>(0);
     const [learningPlanParams, setLearningPlanParams] = useState<LevelBasedPlanParams | AssessmentBasedPlanParams>({
@@ -514,6 +596,7 @@ export default function Home() {
         }
     ) => {
         setUserLevel(level);
+        setActiveLevel(level);
         setInitialWpm(wpm);
 
         // If we have assessment data, use it for more personalized learning plan
@@ -544,10 +627,63 @@ export default function Home() {
         setMode('practice');
     };
 
+    const startPractice = () => {
+        setMode('practice');
+    };
+
     // Function to jump directly to markdown upload
     const jumpToMarkdownUpload = () => {
         setMode('practice');
         setShowUploadArea(true);
+    };
+
+    // Functions to load different content types
+    const loadQuotes = async () => {
+        setIsLoading(true);
+        try {
+            const content = await loadMarkdownFile('/data/quotes.md');
+            if (content) {
+                setUploadedContent(content);
+            } else {
+                setUploadedContent(fallbackContent);
+            }
+            setMode('practice');
+        } catch (error) {
+            console.error('Failed to load quotes:', error);
+            setUploadedContent(fallbackContent);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCustomUpload = () => {
+        setMode('custom');
+        setShowUploadArea(true);
+    };
+
+    const startLearning = (level: 'beginner' | 'intermediate' | 'advanced', wpm: number) => {
+        console.log(`startLearning called with level=${level}, wpm=${wpm}`);
+
+        // Set the mode to learning
+        setMode('learning');
+
+        // Set the activeLevel to highlight the correct button
+        setActiveLevel(level);
+
+        // Set the userLevel for tracking purposes
+        setUserLevel(level);
+
+        // Set initialWpm to track progress
+        setInitialWpm(wpm);
+
+        // Directly set the learning plan parameters
+        setLearningPlanParams({
+            type: 'level_based',
+            level,
+            currentWpm: wpm
+        });
+
+        console.log(`Learning plan parameters set: level=${level}, wpm=${wpm}`);
     };
 
     return (
@@ -559,12 +695,73 @@ export default function Home() {
                 <link rel="icon" href="/favicon.ico" />
             </Head>
 
+            <ToolbarContainer>
+                <ToolbarGroup>
+                    <ToolbarButton
+                        active={mode === 'assessment'}
+                        onClick={() => {
+                            setMode('assessment');
+                            setActiveLevel(null);
+                        }}
+                    >
+                        <AssessmentIcon /> assessment
+                    </ToolbarButton>
+
+                    <ToolbarButton
+                        active={mode === 'learning' && activeLevel === 'beginner'}
+                        onClick={() => startLearning('beginner', 20)}
+                    >
+                        <LessonsIcon /> beginner
+                    </ToolbarButton>
+                    <ToolbarButton
+                        active={mode === 'learning' && activeLevel === 'intermediate'}
+                        onClick={() => startLearning('intermediate', 40)}
+                    >
+                        <LessonsIcon /> intermediate
+                    </ToolbarButton>
+                    <ToolbarButton
+                        active={mode === 'learning' && activeLevel === 'advanced'}
+                        onClick={() => startLearning('advanced', 80)}
+                    >
+                        <LessonsIcon /> advanced
+                    </ToolbarButton>
+                </ToolbarGroup>
+
+                <ToolbarDivider />
+
+                <ToolbarGroup>
+                    <ToolbarButton
+                        active={mode === 'practice'}
+                        onClick={() => {
+                            loadQuotes();
+                            setActiveLevel(null);
+                        }}
+                    >
+                        <QuotesIcon /> quotes
+                    </ToolbarButton>
+                    <ToolbarButton
+                        active={mode === 'custom'}
+                        onClick={() => {
+                            jumpToMarkdownUpload();
+                            setActiveLevel(null);
+                        }}
+                    >
+                        <CustomIcon /> custom
+                    </ToolbarButton>
+                </ToolbarGroup>
+
+                <ToolbarSpacer />
+
+                <ThemeToggle />
+            </ToolbarContainer>
+
             <Container className="container">
                 <Header>
                     <Title>
                         {mode === 'assessment' ? 'Typing Skill Assessment' :
                             mode === 'learning' ? 'Personalized Learning Plan' :
-                                'Typing Practice'}
+                                mode === 'custom' ? 'Custom Text Practice' :
+                                    'Typing Practice'}
                     </Title>
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         {mode === 'practice' && !isCompleted && parsedItems.length > 0 && (
@@ -597,33 +794,12 @@ export default function Home() {
                                 </button>
                             </>
                         )}
-                        <ThemeToggle />
                     </div>
                 </Header>
 
                 <Main>
                     {mode === 'assessment' && (
-                        <>
-                            <TypingAssessment onComplete={handleAssessmentComplete} />
-                            <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-                                <button
-                                    onClick={jumpToMarkdownUpload}
-                                    style={{
-                                        background: 'var(--primary)',
-                                        color: 'white',
-                                        border: 'none',
-                                        padding: '0.75rem 1.5rem',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '1rem',
-                                        fontWeight: '500',
-                                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-                                    }}
-                                >
-                                    Skip Assessment & Upload Custom Text
-                                </button>
-                            </div>
-                        </>
+                        <TypingAssessment onComplete={handleAssessmentComplete} />
                     )}
 
                     {mode === 'learning' && userLevel && (
@@ -634,7 +810,7 @@ export default function Home() {
                         />
                     )}
 
-                    {mode === 'practice' && (
+                    {(mode === 'practice' || mode === 'custom') && (
                         isLoading ? (
                             <div style={{ textAlign: 'center', padding: '2rem' }}>
                                 <p>Loading typing content...</p>
