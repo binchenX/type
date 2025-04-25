@@ -739,10 +739,10 @@ export default function Home() {
             <Container className="container">
                 <Header>
                     <Title>
-                        {mode === 'assessment' ? 'Typing Skill Assessment' :
-                            mode === 'learning' ? 'Personalized Learning Plan' :
+                        {mode === 'assessment' ? 'AI-Powered Typing Skill Assessment' :
+                            mode === 'learning' ? 'AI-Generated Learning Plan' :
                                 mode === 'custom' ? 'Custom Text Practice' :
-                                    'Typing Practice'}
+                                    'AI-Powered Typing Practice'}
                     </Title>
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         {mode === 'practice' && !isCompleted && parsedItems.length > 0 && (

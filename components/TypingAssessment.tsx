@@ -329,7 +329,7 @@ const TypingAssessment: React.FC<TypingAssessmentProps> = ({ onComplete }) => {
                             <path d="M12 16V12L10 10M12 8V8.01M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21Z"
                                 stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                        Your answer helps us personalize your experience
+                        Your answer helps our AI personalize your learning experience
                     </ProgressIndicator>
                 </Card>
             </AssessmentContainer>
@@ -340,9 +340,9 @@ const TypingAssessment: React.FC<TypingAssessmentProps> = ({ onComplete }) => {
         <AssessmentContainer>
             <Card>
                 <TypingHeader>
-                    <Subtitle>Quick Typing Assessment</Subtitle>
+                    <Subtitle>AI-Powered Typing Assessment</Subtitle>
                     <AssessmentText>
-                        Please type the following text to help us determine your current typing level:
+                        Please type the following text to help our AI determine your current typing level:
                     </AssessmentText>
                     <TypingPrompt>Type the text below</TypingPrompt>
                 </TypingHeader>

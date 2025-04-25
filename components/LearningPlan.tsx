@@ -275,9 +275,9 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
             <PlanContainer>
                 <LoadingContainer>
                     <LoadingSpinner />
-                    <LoadingText>Generating your personalized learning plan...</LoadingText>
+                    <LoadingText>Our AI is generating your personalized learning plan...</LoadingText>
                     <LoadingSubText>
-                        Creating a custom plan for {planParams.type === 'level_based' ?
+                        Creating a custom AI-tailored plan for {planParams.type === 'level_based' ?
                             `${planParams.level} level at ${planParams.currentWpm} WPM` :
                             `${planParams.wpm} WPM`
                         }
@@ -290,7 +290,7 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
     if (!modules.length) {
         return (
             <PlanContainer>
-                <ModuleTitle>Error loading learning plan</ModuleTitle>
+                <ModuleTitle>Error loading AI learning plan</ModuleTitle>
                 <Button onClick={onExit}>Exit to Practice</Button>
             </PlanContainer>
         );

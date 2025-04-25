@@ -547,14 +547,14 @@ const Results: React.FC<ResultsProps> = ({
       {errorItems.length > 0 && (
         <ErrorStatsSection>
           <ErrorStatsHeader>
-            Characters You Need to Practice
+            Characters Our AI Recommends You Practice
             {isLocal ? (
-              <EnvironmentBadge theme="local">LLM-Enabled</EnvironmentBadge>
+              <EnvironmentBadge theme="local">AI-Enabled</EnvironmentBadge>
             ) : (
-              <EnvironmentBadge theme="remote">LLM Disabled</EnvironmentBadge>
+              <EnvironmentBadge theme="remote">AI Disabled</EnvironmentBadge>
             )}
           </ErrorStatsHeader>
-          <p>Here are the characters you had the most trouble with, sorted by error rate:</p>
+          <p>Our AI has analyzed your typing patterns and identified these characters you had the most trouble with:</p>
 
           <ErrorList>
             {errorItems.map(item => (
@@ -594,7 +594,7 @@ const Results: React.FC<ResultsProps> = ({
               >
                 {isGenerating ? (
                   <>
-                    <LoadingSpinner /> Generating Practice Text...
+                    <LoadingSpinner /> Generating AI-Powered Practice Text...
                   </>
                 ) : (
                   "Generate AI-Powered Practice Text"
@@ -615,10 +615,10 @@ const Results: React.FC<ResultsProps> = ({
 
       {generatedPractice.length > 0 && (
         <PracticeGenerationSection>
-          <h3>Generated Practice Text</h3>
+          <h3>AI-Generated Practice Text</h3>
           <p>
-            Here are {!isLocal ? "basic" : "custom AI-generated"} practice sentences
-            focused on your problematic characters: {errorItems.map(item => item.char === ' ' ? 'SPACE' : item.char).join(', ')}
+            Our AI has created {!isLocal ? "basic" : "personalized"} practice sentences
+            specifically focused on your problematic characters: {errorItems.map(item => item.char === ' ' ? 'SPACE' : item.char).join(', ')}
           </p>
 
           <PracticeItemList>
@@ -666,10 +666,10 @@ const Results: React.FC<ResultsProps> = ({
           {onStartNewPractice && (
             <div style={{ textAlign: 'center', marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'center' }}>
               <Button onClick={handleStartPractice}>
-                Start Practicing These Sentences
+                Start AI-Tailored Practice Session
               </Button>
-              <OutlineButton onClick={handleGeneratePractice}>
-                Generate New Sentences
+              <OutlineButton onClick={onReset}>
+                Practice Again
               </OutlineButton>
             </div>
           )}
