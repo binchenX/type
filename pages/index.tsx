@@ -51,24 +51,25 @@ const Main = styled.main`
 const ToolbarContainer = styled.div`
   display: flex;
   align-items: center;
-  background-color: #202020;
+  background-color: var(--background-light);
   padding: 0.75rem 1.25rem;
   border-radius: 8px;
   margin-bottom: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow-x: auto;
+  border: 1px solid var(--border);
 `;
 
 const ToolbarDivider = styled.div`
   width: 1px;
   height: 24px;
-  background-color: #3a3a3a;
+  background-color: var(--border);
   margin: 0 10px;
 `;
 
 const ToolbarButton = styled.button<{ active?: boolean }>`
-  background-color: transparent;
-  color: ${props => props.active ? '#ffcc00' : '#aaaaaa'};
+  background-color: ${props => props.active ? 'var(--primary)' : 'transparent'};
+  color: ${props => props.active ? 'white' : 'var(--text)'};
   border: none;
   font-weight: ${props => props.active ? '600' : '500'};
   padding: 0.5rem 1rem;
@@ -79,9 +80,11 @@ const ToolbarButton = styled.button<{ active?: boolean }>`
   gap: 8px;
   font-size: 1rem;
   white-space: nowrap;
+  border-radius: 4px;
   
   &:hover {
-    color: ${props => props.active ? '#ffcc00' : 'white'};
+    background-color: ${props => props.active ? 'var(--primary-dark)' : 'var(--background)'};
+    color: ${props => props.active ? 'white' : 'var(--primary)'};
   }
   
   svg {
