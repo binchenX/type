@@ -50,30 +50,21 @@ export default async function handler(
     req: NextApiRequest,
     res: NextApiResponse
 ) {
-    console.log('API: Received request for generate-learning-plan');
-    console.log('API: Request method:', req.method);
-
     if (req.method !== 'POST') {
         console.log('API: Rejected non-POST request:', req.method);
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // Log the raw request body for debugging
-    console.log('API: Raw request body:', JSON.stringify(req.body, null, 2));
-
     // Get client IP and handle rate limiting
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
     const clientIp = Array.isArray(ip) ? ip[0] : ip;
-    console.log('API: Client IP:', clientIp);
 
     const { remaining, isLimited } = getRateLimitInfo(clientIp);
-    console.log('API: Rate limit info:', { remaining, isLimited });
 
     res.setHeader('X-RateLimit-Limit', rateLimit.max);
     res.setHeader('X-RateLimit-Remaining', Math.max(0, remaining));
 
     if (isLimited) {
-        console.log('API: Request rate limited for IP:', clientIp);
         return res.status(429).json({ error: 'Too many requests, please try again later.' });
     }
 
@@ -82,19 +73,14 @@ export default async function handler(
     let params: LearningPlanParams;
 
     if (!body.type) {
-        console.log('API: Missing type in request body');
         return res.status(400).json({
             error: 'Missing required field: type',
             receivedBody: body
         });
     }
 
-    console.log('API: Request type:', body.type);
-
     if (body.type === 'level_based') {
-        console.log('API: Validating level-based parameters');
         if (!validateLevelBasedParams(body)) {
-            console.log('API: Invalid level-based parameters:', body);
             return res.status(400).json({
                 error: 'Invalid level-based parameters',
                 receivedBody: body
@@ -102,9 +88,7 @@ export default async function handler(
         }
         params = body;
     } else if (body.type === 'assessment') {
-        console.log('API: Validating assessment parameters');
         if (!validateAssessmentParams(body)) {
-            console.log('API: Invalid assessment parameters:', body);
             return res.status(400).json({
                 error: 'Invalid assessment parameters',
                 receivedBody: body

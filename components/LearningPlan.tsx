@@ -173,7 +173,6 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
 
     // Only log on initial mount or meaningful changes to avoid spam
     useEffect(() => {
-        console.log('LearningPlan: Component mounted with params:', planParams);
     }, [planParamsString]);
 
     const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
@@ -196,13 +195,9 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
         if (apiCallMade) return;
 
         const generatePlan = async () => {
-            console.log('LearningPlan: Starting plan generation');
             setApiCallMade(true);
 
             try {
-                console.log('LearningPlan: Making API request to /api/generate-learning-plan');
-                console.log('LearningPlan: Request body:', JSON.stringify(planParams, null, 2));
-
                 const response = await fetch('/api/generate-learning-plan', {
                     method: 'POST',
                     headers: {
@@ -211,7 +206,6 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
                     body: JSON.stringify(planParams)
                 });
 
-                console.log('LearningPlan: API response status:', response.status);
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
@@ -220,10 +214,7 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
                 }
 
                 const data = await response.json();
-                console.log('LearningPlan: Raw API response:', JSON.stringify(data, null, 2));
-
                 if (data.modules && Array.isArray(data.modules)) {
-                    console.log('LearningPlan: Valid modules received, count:', data.modules.length);
                     setModules(data.modules);
                 } else {
                     console.error('LearningPlan: Invalid response format:', data);
@@ -244,7 +235,6 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
                         ))
                     }]
                 }];
-                console.log('LearningPlan: Using fallback modules:', fallbackModules);
                 setModules(fallbackModules);
             } finally {
                 setIsLoading(false);

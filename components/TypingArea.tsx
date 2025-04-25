@@ -355,7 +355,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
         // If typing has not started yet, record the start time
         if (!newTypingState.startTime) {
-            console.log('TypingArea: Setting initial start time');
             newTypingState.startTime = Date.now();
         }
 
@@ -394,7 +393,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
             // Ensure startTime exists
             if (!newTypingState.startTime) {
-                console.log('TypingArea: Setting fallback start time');
                 // Set a fallback start time (1 second ago) if missing
                 newTypingState.startTime = Date.now() - 1000;
             }
@@ -407,11 +405,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
             // Use setTimeout to ensure state is updated before calling onComplete
             setTimeout(() => {
-                console.log('TypingArea: Calling onComplete with timing:', {
-                    startTime: newTypingState.startTime,
-                    endTime: newTypingState.endTime,
-                    elapsed: (newTypingState.endTime || Date.now()) - (newTypingState.startTime || Date.now() - 1000)
-                });
                 onComplete(newTypingState);
             }, 50);
 
