@@ -663,25 +663,18 @@ export default function Home() {
 
     const startLearning = (level: 'beginner' | 'intermediate' | 'advanced', wpm: number) => {
         console.log(`startLearning called with level=${level}, wpm=${wpm}`);
-
         // Set the mode to learning
         setMode('learning');
-
-        // Set the activeLevel to highlight the correct button
-        setActiveLevel(level);
-
         // Set the userLevel for tracking purposes
         setUserLevel(level);
-
-        // Set initialWpm to track progress
-        setInitialWpm(wpm);
-
         // Directly set the learning plan parameters
         setLearningPlanParams({
             type: 'level_based',
             level,
             currentWpm: wpm
         });
+        // Set the activeLevel to highlight the correct button
+        setActiveLevel(level);
 
         console.log(`Learning plan parameters set: level=${level}, wpm=${wpm}`);
     };
@@ -704,26 +697,14 @@ export default function Home() {
                             setActiveLevel(null);
                         }}
                     >
-                        <AssessmentIcon /> assessment
+                        <AssessmentIcon /> Assessment
                     </ToolbarButton>
 
                     <ToolbarButton
                         active={mode === 'learning' && activeLevel === 'beginner'}
                         onClick={() => startLearning('beginner', 20)}
                     >
-                        <LessonsIcon /> beginner
-                    </ToolbarButton>
-                    <ToolbarButton
-                        active={mode === 'learning' && activeLevel === 'intermediate'}
-                        onClick={() => startLearning('intermediate', 40)}
-                    >
-                        <LessonsIcon /> intermediate
-                    </ToolbarButton>
-                    <ToolbarButton
-                        active={mode === 'learning' && activeLevel === 'advanced'}
-                        onClick={() => startLearning('advanced', 80)}
-                    >
-                        <LessonsIcon /> advanced
+                        <LessonsIcon /> Lessons
                     </ToolbarButton>
                 </ToolbarGroup>
 
@@ -737,7 +718,7 @@ export default function Home() {
                             setActiveLevel(null);
                         }}
                     >
-                        <QuotesIcon /> quotes
+                        <QuotesIcon /> Quotes
                     </ToolbarButton>
                     <ToolbarButton
                         active={mode === 'custom'}
@@ -746,7 +727,7 @@ export default function Home() {
                             setActiveLevel(null);
                         }}
                     >
-                        <CustomIcon /> custom
+                        <CustomIcon /> Custom
                     </ToolbarButton>
                 </ToolbarGroup>
 
