@@ -9,9 +9,9 @@ const fadeIn = keyframes`
 `;
 
 const AssessmentContainer = styled.div`
-  max-width: 900px;
+  width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
   animation: ${fadeIn} 0.5s ease-out;
 `;
 

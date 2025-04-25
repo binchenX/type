@@ -6,9 +6,9 @@ import { TypingState } from '@/types';
 import { LevelBasedPlanParams, AssessmentBasedPlanParams, LearningPlanParams } from '@/services/llmService';
 
 const PlanContainer = styled.div`
-  max-width: 800px;
+  width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
 `;
 
 const ModuleTitle = styled.h2`
