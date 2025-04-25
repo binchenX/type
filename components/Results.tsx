@@ -548,10 +548,8 @@ const Results: React.FC<ResultsProps> = ({
         <ErrorStatsSection>
           <ErrorStatsHeader>
             Characters Our AI Recommends You Practice
-            {isLocal ? (
+            {(
               <EnvironmentBadge theme="local">AI-Enabled</EnvironmentBadge>
-            ) : (
-              <EnvironmentBadge theme="remote">AI Disabled</EnvironmentBadge>
             )}
           </ErrorStatsHeader>
           <p>Our AI has analyzed your typing patterns and identified these characters you had the most trouble with:</p>
@@ -586,7 +584,7 @@ const Results: React.FC<ResultsProps> = ({
             ))}
           </ErrorList>
 
-          {isLocal && (
+          {(
             <div style={{ textAlign: 'center', marginTop: '2rem' }}>
               <Button
                 onClick={handleGeneratePractice}
@@ -603,13 +601,6 @@ const Results: React.FC<ResultsProps> = ({
             </div>
           )}
 
-          {!isLocal && (
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-light)', margin: '2rem 0 0', textAlign: 'center' }}>
-              The AI-powered practice generation is only available when running locally.
-              <br />
-              Please run the app locally to access this feature.
-            </p>
-          )}
         </ErrorStatsSection>
       )}
 
@@ -617,7 +608,7 @@ const Results: React.FC<ResultsProps> = ({
         <PracticeGenerationSection>
           <h3>AI-Generated Practice Text</h3>
           <p>
-            Our AI has created {!isLocal ? "basic" : "personalized"} practice sentences
+            Our AI has created personalized practice sentences
             specifically focused on your problematic characters: {errorItems.map(item => item.char === ' ' ? 'SPACE' : item.char).join(', ')}
           </p>
 
@@ -747,7 +738,7 @@ const Results: React.FC<ResultsProps> = ({
 
       <ButtonGroup>
         <Button onClick={onReset}>Practice Again</Button>
-        {generatedPractice.length === 0 && errorItems.length > 0 && !isGenerating && isLocal && (
+        {generatedPractice.length === 0 && errorItems.length > 0 && !isGenerating && (
           <OutlineButton onClick={handleGeneratePractice}>
             Generate Practice Text
           </OutlineButton>
