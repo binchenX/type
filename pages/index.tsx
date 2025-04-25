@@ -743,9 +743,9 @@ export default function Home() {
                 <Header style={{ marginBottom: mode === 'learning' ? '0.5rem' : '2rem' }}>
                     {mode !== 'learning' && (
                         <Title>
-                            {mode === 'assessment' ? 'AI-Powered Typing Skill Assessment' :
+                            {mode === 'assessment' ? '' :
                                 mode === 'custom' ? 'Custom Text Practice' :
-                                    'AI-Powered Typing Practice'}
+                                    'Quotes Practice'}
                         </Title>
                     )}
                     <div style={{ display: 'flex', gap: '1rem' }}>
