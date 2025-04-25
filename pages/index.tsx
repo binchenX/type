@@ -9,6 +9,7 @@ import TypingArea from '@/components/TypingArea';
 import Results from '@/components/Results';
 import Stats from '@/components/Stats';
 import ThemeToggle from '@/components/ThemeToggle';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import {
     loadMarkdownFile,
     fallbackContent,
@@ -812,9 +813,11 @@ export default function Home() {
 
                     {(mode === 'practice' || mode === 'custom') && (
                         isLoading ? (
-                            <div style={{ textAlign: 'center', padding: '2rem' }}>
-                                <p>Loading typing content...</p>
-                            </div>
+                            <LoadingSpinner
+                                message="Loading typing content..."
+                                subMessage="Preparing your practice session"
+                                size="large"
+                            />
                         ) : showUploadArea ? (
                             <UploadArea onUpload={handleFileUpload} />
                         ) : (

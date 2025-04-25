@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { ParsedMarkdownItem, ErrorFrequencyMap } from '@/types';
+import LoadingSpinner from './LoadingSpinner';
 
 const Container = styled.div`
   display: flex;
@@ -218,21 +219,10 @@ const TooltipLabel = styled.span`
   display: block;
 `;
 
-const LoadingSpinner = styled.div`
-  border: 3px solid var(--background);
-  border-top: 3px solid var(--primary);
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  animation: spin 1s linear infinite;
-  display: inline-block;
-  margin-right: 0.5rem;
-  vertical-align: middle;
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
+const InlineLoadingContainer = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 `;
 
 const PracticeGenerationSection = styled.div`

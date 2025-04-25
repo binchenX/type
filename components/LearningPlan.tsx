@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import TypingArea from './TypingArea';
 import Stats from './Stats';
+import LoadingSpinner from './LoadingSpinner';
 import { TypingState } from '@/types';
 import { LevelBasedPlanParams, AssessmentBasedPlanParams, LearningPlanParams } from '@/services/llmService';
 
@@ -113,37 +114,6 @@ const Button = styled.button<{ primary?: boolean }>`
   &:hover {
     background-color: ${props => props.primary ? 'var(--primary-dark)' : 'var(--background-light)'};
   }
-`;
-
-const LoadingContainer = styled.div`
-    text-align: center;
-    padding: 2rem;
-    color: var(--text);
-`;
-
-const LoadingSpinner = styled.div`
-    display: inline-block;
-    width: 50px;
-    height: 50px;
-    border: 3px solid var(--background-light);
-    border-radius: 50%;
-    border-top-color: var(--primary);
-    animation: spin 1s ease-in-out infinite;
-    margin-bottom: 1rem;
-
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-`;
-
-const LoadingText = styled.div`
-    font-size: 1.2rem;
-    margin-bottom: 0.5rem;
-`;
-
-const LoadingSubText = styled.div`
-    font-size: 0.9rem;
-    color: var(--text-light);
 `;
 
 interface Module {
@@ -283,16 +253,15 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
     if (isLoading) {
         return (
             <PlanContainer>
-                <LoadingContainer>
-                    <LoadingSpinner />
-                    <LoadingText>Generating your personalized learning plan...</LoadingText>
-                    <LoadingSubText>
-                        Creating a custom plan for {planParams.type === 'level_based' ?
+                <LoadingSpinner
+                    message="Generating your personalized learning plan..."
+                    subMessage={
+                        `Creating a custom plan for ${planParams.type === 'level_based' ?
                             `${planParams.level} level at ${planParams.currentWpm} WPM` :
-                            `${planParams.wpm} WPM`
-                        }
-                    </LoadingSubText>
-                </LoadingContainer>
+                            `${planParams.wpm} WPM`}`
+                    }
+                    size="large"
+                />
             </PlanContainer>
         );
     }
