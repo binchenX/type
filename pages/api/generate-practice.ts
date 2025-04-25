@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { ErrorFrequencyMap } from '@/types';
-import llmService from '@/services/llmService';
+import llmService, { errorMapToPracticeRequest } from '@/services/llmService';
 
 // Simple in-memory store for rate limiting
 const rateLimit = {
@@ -36,10 +36,12 @@ function isValidErrorFrequencyMap(map: any): map is ErrorFrequencyMap {
     for (const [key, value] of Object.entries(map)) {
         if (typeof key !== 'string') return false;
         if (!value || typeof value !== 'object') return false;
-        if (typeof value.attempts !== 'number' ||
-            typeof value.errors !== 'number' ||
-            !value.incorrectReplacements ||
-            typeof value.incorrectReplacements !== 'object') {
+
+        const stats = value as any;
+        if (typeof stats.attempts !== 'number' ||
+            typeof stats.errors !== 'number' ||
+            !stats.incorrectReplacements ||
+            typeof stats.incorrectReplacements !== 'object') {
             return false;
         }
     }
@@ -82,7 +84,9 @@ export default async function handler(
 
     try {
         const errorFrequencyMap = req.body as ErrorFrequencyMap;
-        const response = await llmService.generatePracticeText(errorFrequencyMap);
+        // Convert to GeneratePracticeRequest
+        const practiceRequest = errorMapToPracticeRequest(errorFrequencyMap);
+        const response = await llmService.generatePracticeText(practiceRequest);
         res.status(200).json(response);
     } catch (error) {
         console.error('Error in generate-practice API route:', error);

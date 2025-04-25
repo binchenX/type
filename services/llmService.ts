@@ -1,6 +1,14 @@
 import { ErrorFrequencyMap } from '@/types';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+
+export interface GeneratePracticeRequest {
+    focusKeys?: string[]; // Specific keys to focus on
+    focusWords?: string[]; // Specific words to focus on
+    length?: number; // Desired length of practice text
+    difficulty?: 'easy' | 'medium' | 'hard';
+}
+
 /**
  * Response format for generating practice text
  */
@@ -64,7 +72,7 @@ export type LearningPlanParams = LevelBasedPlanParams | AssessmentBasedPlanParam
 export interface LLMProvider {
     name: string;
     isAvailable(): Promise<boolean>;
-    generatePracticeText(errorFrequencyMap: ErrorFrequencyMap): Promise<GeneratePracticeResponse>;
+    generatePracticeText(request: GeneratePracticeRequest): Promise<GeneratePracticeResponse>;
     generateLearningPlan(params: LearningPlanParams): Promise<GenerateLearningPlanResponse>;
 }
 
@@ -94,6 +102,25 @@ export interface LLMConfig {
         enabled: boolean;
     };
     preferredProvider?: 'gemini' | 'ollama';
+}
+/**
+ * Converts an ErrorFrequencyMap into a GeneratePracticeRequest
+ * @param errorFrequencyMap The error frequency map to convert
+ * @returns A GeneratePracticeRequest object with focus keys based on the most problematic characters
+ */
+export function errorMapToPracticeRequest(errorFrequencyMap: ErrorFrequencyMap): GeneratePracticeRequest {
+    // Extract top problematic characters
+    const problematicChars = Object.entries(errorFrequencyMap)
+        .filter(([_, stats]) => stats.attempts > 0 && stats.errors > 0)
+        .sort((a, b) => (b[1].errors / b[1].attempts) - (a[1].errors / a[1].attempts))
+        .slice(0, 5) // Take top 5 most problematic characters
+        .map(([char, _]) => char);
+
+    return {
+        focusKeys: problematicChars,
+        length: 5, // Default to 5 practice sections
+        difficulty: 'medium' // Default difficulty
+    };
 }
 
 /**
@@ -148,34 +175,11 @@ export class GeminiProvider implements LLMProvider {
         return this.genAI;
     }
 
-    async generatePracticeText(errorFrequencyMap: ErrorFrequencyMap): Promise<GeneratePracticeResponse> {
+    async generatePracticeText(request: GeneratePracticeRequest): Promise<GeneratePracticeResponse> {
         try {
-            console.log('Gemini provider: Starting practice text generation');
+            console.log('Gemini provider: generatePracticeText');
 
-            // Process the error data to create a prompt for the LLM
-            const problematicChars = Object.entries(errorFrequencyMap)
-                .filter(([_, stats]) => stats.attempts > 0 && stats.errors > 0)
-                .sort((a, b) => (b[1].errors / b[1].attempts) - (a[1].errors / a[1].attempts))
-                .slice(0, 10)
-                .map(([char, stats]) => ({
-                    char,
-                    errorRate: Math.round((stats.errors / stats.attempts) * 100),
-                }));
-
-            // If no problematic chars, return general practice text
-            if (problematicChars.length === 0) {
-                return {
-                    success: true,
-                    text: "Great job! You don't have any specific characters to practice. Here's a general typing text to keep your skills sharp.",
-                    practiceSections: getGenericSentences(),
-                };
-            }
-
-            // Create prompt for Gemini
-            const charsList = problematicChars
-                .map((item) => item.char === ' ' ? 'SPACE' : item.char)
-                .join(', ');
-
+            const charsList = request?.focusKeys?.join(', ') || '';
             const prompt = buildPrompt(charsList);
 
             // Get an instance of the generative AI
@@ -210,9 +214,10 @@ export class GeminiProvider implements LLMProvider {
 
             return {
                 success: true,
-                text: `Here are practice sentences focused on characters: ${problematicChars.map(item => item.char === ' ' ? 'SPACE' : item.char).join(', ')}`,
+                text: `Here are practice sentences focused on characters: ${charsList}`,
                 practiceSections,
                 prompt, // Include the prompt for debugging/transparency
+                provider: 'gemini'
             };
         } catch (error) {
             console.error('Error generating with Gemini:', error);
@@ -387,37 +392,12 @@ export class OllamaProvider implements LLMProvider {
         }
     }
 
-    async generatePracticeText(errorFrequencyMap: ErrorFrequencyMap): Promise<GeneratePracticeResponse> {
+    async generatePracticeText(request: GeneratePracticeRequest): Promise<GeneratePracticeResponse> {
         try {
             console.log('Ollama provider: Starting practice text generation');
 
             // Process the error data to create a prompt for the LLM
-            const problematicChars = Object.entries(errorFrequencyMap)
-                .filter(([_, stats]) => stats.attempts > 0 && stats.errors > 0)
-                .sort((a, b) => (b[1].errors / b[1].attempts) - (a[1].errors / a[1].attempts))
-                .slice(0, 10)
-                .map(([char, stats]) => ({
-                    char,
-                    errorRate: Math.round((stats.errors / stats.attempts) * 100),
-                }));
-
-            console.log(`Ollama provider: Found ${problematicChars.length} problematic characters`);
-
-            // If no problematic chars, return general practice text
-            if (problematicChars.length === 0) {
-                console.log('Ollama provider: No problematic characters found, returning generic sentences');
-                return {
-                    success: true,
-                    text: "Great job! You don't have any specific characters to practice. Here's a general typing text to keep your skills sharp.",
-                    practiceSections: getGenericSentences(),
-                };
-            }
-
-            // Create prompt for Ollama
-            const charsList = problematicChars
-                .map((item) => item.char === ' ' ? 'SPACE' : item.char)
-                .join(', ');
-
+            const charsList = request?.focusKeys?.join(', ') || '';
             console.log(`Ollama provider: Creating prompt for characters: ${charsList}`);
             const prompt = buildPrompt(charsList);
             console.log('Ollama provider: Prompt created:', prompt);
@@ -471,9 +451,10 @@ export class OllamaProvider implements LLMProvider {
             console.log('Ollama provider: Practice text generation successful');
             return {
                 success: true,
-                text: `Here are practice sentences focused on characters: ${problematicChars.map(item => item.char === ' ' ? 'SPACE' : item.char).join(', ')}`,
+                text: `Here are practice sentences focused on characters: ${charsList}`,
                 practiceSections,
                 prompt, // Include the prompt for debugging/transparency
+                provider: 'ollama'
             };
         } catch (error) {
             console.error('Error generating with Ollama:', error);
@@ -530,26 +511,12 @@ export class FallbackProvider implements LLMProvider {
         return true; // Fallback is always available
     }
 
-    async generatePracticeText(errorFrequencyMap: ErrorFrequencyMap): Promise<GeneratePracticeResponse> {
+    async generatePracticeText(request: GeneratePracticeRequest): Promise<GeneratePracticeResponse> {
         console.log('Fallback provider: Starting practice text generation');
 
-        // Extract top problematic characters
-        const problematicChars = Object.entries(errorFrequencyMap)
-            .filter(([_, stats]) => stats.attempts > 0 && stats.errors > 0)
-            .sort((a, b) => (b[1].errors / b[1].attempts) - (a[1].errors / a[1].attempts))
-            .slice(0, 5)
-            .map(([char, _]) => char);
-
-        console.log(`Fallback provider: Found ${problematicChars.length} problematic characters`);
-
-        if (problematicChars.length === 0) {
-            console.log('Fallback provider: No problematic characters found, returning generic sentences');
-            return {
-                success: true,
-                text: "Great job! You don't have any specific characters to practice. Here's a general typing text to keep your skills sharp.",
-                practiceSections: getGenericSentences(),
-            };
-        }
+        // Process the error data to create a prompt for the LLM
+        const charsList = request?.focusKeys?.join(', ') || '';
+        const problematicChars = request?.focusKeys || [];
 
         // Generate sentences that include the problematic characters
         console.log(`Fallback provider: Generating practice sentences for characters: ${problematicChars.join(', ')}`);
@@ -584,7 +551,7 @@ export class FallbackProvider implements LLMProvider {
         console.log(`Fallback provider: Currently have ${sentences.length} sentences, adding generic sentences if needed`);
         const genericSentences = getGenericSentences();
 
-        while (sentences.length < 5) {
+        while (sentences.length < (request.length || 5)) {
             const randomIndex = Math.floor(Math.random() * genericSentences.length);
             const sentence = genericSentences[randomIndex];
             if (!sentences.includes(sentence)) {
@@ -595,15 +562,18 @@ export class FallbackProvider implements LLMProvider {
 
         // Log the final practice sentences
         console.log('Fallback provider: Generated practice sentences:');
-        sentences.slice(0, 5).forEach((sentence: string, index: number) => {
+        sentences.slice(0, request.length || 5).forEach((sentence: string, index: number) => {
             console.log(`  ${index + 1}: ${sentence}`);
         });
 
         console.log('Fallback provider: Practice text generation successful');
         return {
             success: true,
-            text: `Here are practice sentences focused on your problematic characters: ${problematicChars.map(c => c === ' ' ? 'SPACE' : c).join(', ')}`,
-            practiceSections: sentences.slice(0, 5),
+            text: problematicChars.length > 0
+                ? `Here are practice sentences focused on your problematic characters: ${problematicChars.map(c => c === ' ' ? 'SPACE' : c).join(', ')}`
+                : "Here are some general practice sentences:",
+            practiceSections: sentences.slice(0, request.length || 5),
+            provider: 'fallback'
         };
     }
 
@@ -719,7 +689,7 @@ export class LLMService {
     /**
      * Generate practice text using the first available provider
      */
-    async generatePracticeText(errorFrequencyMap: ErrorFrequencyMap): Promise<GeneratePracticeResponse> {
+    async generatePracticeText(request: GeneratePracticeRequest): Promise<GeneratePracticeResponse> {
         console.log('Checking available LLM providers...');
 
         for (const provider of this.providers) {
@@ -732,7 +702,7 @@ export class LLMService {
                     console.log(`---------------------------------------`);
                     console.log(`USING ${provider.name.toUpperCase()} PROVIDER FOR TEXT GENERATION`);
                     console.log(`---------------------------------------`);
-                    const result = await provider.generatePracticeText(errorFrequencyMap);
+                    const result = await provider.generatePracticeText(request);
                     result.provider = provider.name;
                     result.text = `${result.text} (via ${provider.name})`;
                     return result;

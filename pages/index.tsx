@@ -544,6 +544,12 @@ export default function Home() {
         setMode('practice');
     };
 
+    // Function to jump directly to markdown upload
+    const jumpToMarkdownUpload = () => {
+        setMode('practice');
+        setShowUploadArea(true);
+    };
+
     return (
         <>
             <Head>
@@ -597,7 +603,27 @@ export default function Home() {
 
                 <Main>
                     {mode === 'assessment' && (
-                        <TypingAssessment onComplete={handleAssessmentComplete} />
+                        <>
+                            <TypingAssessment onComplete={handleAssessmentComplete} />
+                            <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+                                <button
+                                    onClick={jumpToMarkdownUpload}
+                                    style={{
+                                        background: 'var(--primary)',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '0.75rem 1.5rem',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '1rem',
+                                        fontWeight: '500',
+                                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                                    }}
+                                >
+                                    Skip Assessment & Upload Custom Text
+                                </button>
+                            </div>
+                        </>
                     )}
 
                     {mode === 'learning' && userLevel && (
