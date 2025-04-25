@@ -19,7 +19,7 @@ const CompactHeader = styled.div`
   background-color: var(--background-light);
   padding: 0.75rem 1.25rem;
   border-radius: 8px;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   border: 1px solid var(--border);
   
@@ -55,25 +55,25 @@ const HeaderPills = styled.div`
 `;
 
 const ModuleTitle = styled.h2`
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   color: var(--text);
   font-size: 1.75rem;
   font-weight: 600;
   border-bottom: 2px solid var(--primary);
-  padding-bottom: 0.5rem;
+  padding-bottom: 0.25rem;
 `;
 
 const ModuleDescription = styled.p`
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   color: var(--text-light);
-  line-height: 1.6;
-  font-size: 1.1rem;
+  line-height: 1.4;
+  font-size: 1rem;
 `;
 
 const LessonTitle = styled.h3`
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   color: var(--text);
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -82,26 +82,26 @@ const LessonTitle = styled.h3`
   &:before {
     content: '▶';
     color: var(--primary);
-    font-size: 1rem;
+    font-size: 0.9rem;
   }
 `;
 
 const LessonDescription = styled.p`
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   color: var(--text-light);
-  line-height: 1.6;
-  font-size: 1.1rem;
-  padding-left: 1.5rem;
-  border-left: 3px solid var(--background-light);
+  line-height: 1.4;
+  font-size: 0.95rem;
+  padding-left: 1.25rem;
+  border-left: 2px solid var(--background-light);
 `;
 
 const ProgressBar = styled.div`
-  height: 8px;
+  height: 6px;
   width: 100%;
   background-color: var(--background-light);
   border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 `;
 
 const ProgressFill = styled.div<{ width: number }>`
@@ -188,6 +188,11 @@ const LoadingText = styled.div`
 const LoadingSubText = styled.div`
     font-size: 0.9rem;
     color: var(--text-light);
+`;
+
+// Add a new wrapper for typing area with reduced margins
+const TypingAreaWrapper = styled.div`
+  margin-bottom: 1rem;
 `;
 
 interface Module {
@@ -366,22 +371,20 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
                 </HeaderPills>
             </CompactHeader>
 
-            <ProgressBar>
-                <ProgressFill width={progress} />
-            </ProgressBar>
-
             <ModuleTitle>{currentModule.name}</ModuleTitle>
             <ModuleDescription>{currentModule.description}</ModuleDescription>
 
             <LessonTitle>{currentLesson.title}</LessonTitle>
             <LessonDescription>{currentLesson.description}</LessonDescription>
 
-            <TypingArea
-                text={currentLesson.content}
-                typingState={typingState}
-                setTypingState={setTypingState}
-                onComplete={handleLessonComplete}
-            />
+            <TypingAreaWrapper>
+                <TypingArea
+                    text={currentLesson.content}
+                    typingState={typingState}
+                    setTypingState={setTypingState}
+                    onComplete={handleLessonComplete}
+                />
+            </TypingAreaWrapper>
 
             <Stats
                 currentIndex={completedLessons}
@@ -390,7 +393,7 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
                 currentText={currentLesson.content}
             />
 
-            <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
                 <Button onClick={onExit}>Exit Learning Plan</Button>
             </div>
         </PlanContainer>
