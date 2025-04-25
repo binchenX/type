@@ -312,16 +312,13 @@ const TypingAssessment: React.FC<TypingAssessmentProps> = ({ onComplete }) => {
         return (
             <AssessmentContainer>
                 <Card>
-                    <Subtitle>Before we start...</Subtitle>
-                    <AssessmentText>
-                        Are you new to touch typing? (Using all fingers without looking at the keyboard)
-                    </AssessmentText>
+                    <Subtitle>Are you new to touch typing? </Subtitle>
                     <Options>
                         <Button primary onClick={() => handleSelfAssessment(true)}>
-                            Yes, I'm new to this
+                            Yes, I'm new to this.
                         </Button>
                         <Button outline onClick={() => handleSelfAssessment(false)}>
-                            No, I have some experience
+                            No, I have some experience.
                         </Button>
                     </Options>
                     <ProgressIndicator>
