@@ -10,6 +10,11 @@ export default function App({ Component, pageProps }: AppProps) {
                 <title>QType - AI-Powered Typing Tutor</title>
                 <meta name="description" content="Improve your typing skills with personalized, AI-generated lessons tailored to your unique skill level and typing patterns." />
                 <meta name="keywords" content="typing tutor, AI typing coach, learn to type, typing practice, typing test, touch typing, keyboard skills" />
+                <script
+                    async
+                    src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5494979508153382"
+                    crossOrigin="anonymous"
+                ></script>
             </Head>
             <Component {...pageProps} />
         </ThemeProvider>
