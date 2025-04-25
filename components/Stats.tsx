@@ -289,10 +289,6 @@ const Stats: React.FC<StatsProps> = ({
                 </StatItem>
             </StatsContainer>
 
-            <ExpandButton onClick={toggleDetails}>
-                {showDetails ? 'Hide Details' : 'Show Detailed Stats'}
-            </ExpandButton>
-
             {showDetails && typingState.startTime && (
                 <DetailedStatsContainer>
                     <h4>Detailed Statistics</h4>

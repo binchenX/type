@@ -815,13 +815,6 @@ export default function Home() {
                                     />
                                 ) : (
                                     <>
-                                        <Stats
-                                            currentIndex={currentItemIndex}
-                                            totalItems={parsedItems.length}
-                                            typingState={typingState}
-                                            currentText={getCurrentContent()}
-                                        />
-
                                         <div style={{ position: 'relative' }}>
                                             <KeyboardTips>
                                                 Press <kbd>Alt</kbd>+<kbd>←</kbd> to go back, <kbd>Alt</kbd>+<kbd>→</kbd> to skip
@@ -836,6 +829,13 @@ export default function Home() {
                                                 onSkipBackward={moveToPreviousItem}
                                             />
                                         </div>
+
+                                        <Stats
+                                            currentIndex={currentItemIndex}
+                                            totalItems={parsedItems.length}
+                                            typingState={typingState}
+                                            currentText={getCurrentContent()}
+                                        />
                                     </>
                                 )}
                             </>
