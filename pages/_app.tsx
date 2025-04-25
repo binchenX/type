@@ -5,7 +5,7 @@ import Head from 'next/head';
 
 export default function App({ Component, pageProps }: AppProps) {
     return (
-        <ThemeProvider attribute="class">
+        <ThemeProvider attribute="data-theme">
             <Head>
                 <title>QType - AI-Powered Typing Tutor</title>
                 <meta name="description" content="Improve your typing skills with personalized, AI-generated lessons tailored to your unique skill level and typing patterns." />
