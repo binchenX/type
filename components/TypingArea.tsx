@@ -391,9 +391,30 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         // Check if typing is complete
         if (currentPosition === text.length) {
             console.log('TypingArea: Text completion detected');
+
+            // Ensure startTime exists
+            if (!newTypingState.startTime) {
+                console.log('TypingArea: Setting fallback start time');
+                // Set a fallback start time (1 second ago) if missing
+                newTypingState.startTime = Date.now() - 1000;
+            }
+
+            // Set the end time
             newTypingState.endTime = Date.now();
+
+            // Update typing state immediately
             setTypingState(newTypingState);
-            onComplete(newTypingState);
+
+            // Use setTimeout to ensure state is updated before calling onComplete
+            setTimeout(() => {
+                console.log('TypingArea: Calling onComplete with timing:', {
+                    startTime: newTypingState.startTime,
+                    endTime: newTypingState.endTime,
+                    elapsed: (newTypingState.endTime || Date.now()) - (newTypingState.startTime || Date.now() - 1000)
+                });
+                onComplete(newTypingState);
+            }, 50);
+
             return;
         }
 

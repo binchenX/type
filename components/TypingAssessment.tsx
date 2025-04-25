@@ -57,7 +57,7 @@ interface TypingAssessmentProps {
 
 const TypingAssessment: React.FC<TypingAssessmentProps> = ({ onComplete }) => {
     const [step, setStep] = useState<'question' | 'test'>('question');
-    const assessmentText = "The quick";
+    const assessmentText = "The quick brown fox jumps over the lazy dog. This simple pangram contains every letter of the English alphabet at least once.";
 
     const handleSelfAssessment = (isNewbie: boolean) => {
         if (isNewbie) {
@@ -98,8 +98,21 @@ const TypingAssessment: React.FC<TypingAssessmentProps> = ({ onComplete }) => {
     };
 
     const handleTestComplete = (finalState: TypingState) => {
+        // Ensure we have both start and end time before proceeding
+        if (!finalState.startTime || !finalState.endTime) {
+            console.error('TypingAssessment: Missing start or end time, aborting');
+            return;
+        }
+
         const actualText = finalState.typedChars.join('');
-        const timeInMinutes = ((finalState.endTime || 0) - (finalState.startTime || 0)) / 60000;
+        const timeInMinutes = (finalState.endTime - finalState.startTime) / 60000;
+
+        // Ensure we have a valid timing (prevent division by zero)
+        if (timeInMinutes <= 0) {
+            console.error('TypingAssessment: Invalid timing, aborting');
+            return;
+        }
+
         const wordsTyped = actualText.trim().split(/\s+/).length;
         const wpm = Math.round(wordsTyped / timeInMinutes);
 
@@ -126,7 +139,10 @@ const TypingAssessment: React.FC<TypingAssessmentProps> = ({ onComplete }) => {
             level,
             wpm,
             accuracy,
-            errorPatterns
+            errorPatterns,
+            startTime: finalState.startTime,
+            endTime: finalState.endTime,
+            timeInMinutes
         });
 
         onComplete(level, wpm, {

@@ -168,7 +168,13 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
     onComplete,
     onExit
 }) => {
-    console.log('LearningPlan: Component mounted with params:', planParams);
+    // Log only once when component mounts or when planParams changes meaningfully
+    const planParamsString = JSON.stringify(planParams);
+
+    // Only log on initial mount or meaningful changes to avoid spam
+    useEffect(() => {
+        console.log('LearningPlan: Component mounted with params:', planParams);
+    }, [planParamsString]);
 
     const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
     const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
@@ -183,10 +189,15 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
     });
     const [modules, setModules] = useState<Module[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [apiCallMade, setApiCallMade] = useState(false);
 
     useEffect(() => {
+        // Prevent multiple API calls for the same parameters
+        if (apiCallMade) return;
+
         const generatePlan = async () => {
             console.log('LearningPlan: Starting plan generation');
+            setApiCallMade(true);
 
             try {
                 console.log('LearningPlan: Making API request to /api/generate-learning-plan');
@@ -241,7 +252,7 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
         };
 
         generatePlan();
-    }, [planParams]);
+    }, [planParamsString, apiCallMade]);
 
     const handleLessonComplete = () => {
         const currentModule = modules[currentModuleIndex];
