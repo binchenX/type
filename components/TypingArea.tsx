@@ -174,6 +174,7 @@ interface TypingAreaProps {
     onSkipForward?: () => void;
     onSkipBackward?: () => void;
     showKeyboard?: boolean;
+    blockOnError?: boolean;
 }
 
 // LiveErrorStats component to display errors in real-time
@@ -240,7 +241,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     updateStatistics,
     onSkipForward,
     onSkipBackward,
-    showKeyboard = true
+    showKeyboard = true,
+    blockOnError = true
 }) => {
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -363,10 +365,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         // Store the typed character
         if (currentPosition > 0) {
             const typedChar = typed[currentPosition - 1];
-            newTypingState.typedChars[currentPosition - 1] = typedChar;
+            const expectedChar = text[currentPosition - 1];
 
             // Check if the character was typed correctly
-            const expectedChar = text[currentPosition - 1];
             if (typedChar !== expectedChar) {
                 newTypingState.errors++;
 
@@ -379,7 +380,29 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                     expected: expectedChar,
                     actual: typedChar
                 });
+
+                // If blockOnError is true, don't advance the position
+                if (blockOnError) {
+                    // Force the input value to match only the correct characters
+                    if (inputRef.current) {
+                        const correctText = newTypingState.typedChars.slice(0, currentPosition - 1).join('');
+                        inputRef.current.value = correctText;
+                    }
+
+                    // Update statistics for the incorrect character
+                    if (updateStatistics) {
+                        updateStatistics(expectedChar, typedChar);
+                    }
+
+                    // Update state without advancing position
+                    setTypingState(newTypingState);
+                    return;
+                }
             }
+
+            // Store the typed character (only if correct or if not blocking on error)
+            newTypingState.typedChars[currentPosition - 1] = typedChar;
+
             // Update statistics for all typed characters
             if (updateStatistics) {
                 updateStatistics(expectedChar, typedChar);

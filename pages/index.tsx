@@ -976,6 +976,7 @@ export default function Home() {
                                                 onSkipForward={skipCurrentItem}
                                                 onSkipBackward={moveToPreviousItem}
                                                 showKeyboard={showKeyboard}
+                                                blockOnError={false}
                                             />
                                         </div>
 

@@ -195,164 +195,165 @@ const ProgressIndicator = styled.div`
 `;
 
 interface TypingAssessmentProps {
-    onComplete: (level: 'beginner' | 'intermediate' | 'advanced', wpm: number, assessmentData?: {
-        expectedText: string;
-        actualText: string;
-        accuracy: number;
-        errorPatterns: {
-            characterErrors: { [key: string]: number };
-            commonMistakes: Array<{ expected: string; actual: string; count: number }>;
-        };
-    }) => void;
+  onComplete: (level: 'beginner' | 'intermediate' | 'advanced', wpm: number, assessmentData?: {
+    expectedText: string;
+    actualText: string;
+    accuracy: number;
+    errorPatterns: {
+      characterErrors: { [key: string]: number };
+      commonMistakes: Array<{ expected: string; actual: string; count: number }>;
+    };
+  }) => void;
 }
 
 const TypingAssessment: React.FC<TypingAssessmentProps> = ({ onComplete }) => {
-    const [step, setStep] = useState<'question' | 'test'>('question');
-    const assessmentText = "The quick brown fox jumps over the lazy dog. This simple pangram contains every letter of the English alphabet at least once.";
+  const [step, setStep] = useState<'question' | 'test'>('question');
+  const assessmentText = "The quick brown fox jumps over the lazy dog. This simple pangram contains every letter of the English alphabet at least once.";
 
-    const handleSelfAssessment = (isNewbie: boolean) => {
-        if (isNewbie) {
-            onComplete('beginner', 0);
-        } else {
-            setStep('test');
+  const handleSelfAssessment = (isNewbie: boolean) => {
+    if (isNewbie) {
+      onComplete('beginner', 0);
+    } else {
+      setStep('test');
+    }
+  };
+
+  const handleSkipAssessment = () => {
+    onComplete('intermediate', 40); // Default to intermediate level with 40 WPM
+  };
+
+  const analyzeErrorPatterns = (expected: string, actual: string) => {
+    const characterErrors: { [key: string]: number } = {};
+    const commonMistakes: Array<{ expected: string; actual: string; count: number }> = [];
+    const mistakes = new Map<string, number>();
+
+    const minLength = Math.min(expected.length, actual.length);
+    for (let i = 0; i < minLength; i++) {
+      if (expected[i] !== actual[i]) {
+        if (!characterErrors[expected[i]]) {
+          characterErrors[expected[i]] = 0;
         }
-    };
+        characterErrors[expected[i]]++;
 
-    const handleSkipAssessment = () => {
-        onComplete('intermediate', 40); // Default to intermediate level with 40 WPM
-    };
-
-    const analyzeErrorPatterns = (expected: string, actual: string) => {
-        const characterErrors: { [key: string]: number } = {};
-        const commonMistakes: Array<{ expected: string; actual: string; count: number }> = [];
-        const mistakes = new Map<string, number>();
-
-        const minLength = Math.min(expected.length, actual.length);
-        for (let i = 0; i < minLength; i++) {
-            if (expected[i] !== actual[i]) {
-                if (!characterErrors[expected[i]]) {
-                    characterErrors[expected[i]] = 0;
-                }
-                characterErrors[expected[i]]++;
-
-                const mistakeKey = `${expected[i]}->${actual[i]}`;
-                mistakes.set(mistakeKey, (mistakes.get(mistakeKey) || 0) + 1);
-            }
-        }
-
-        mistakes.forEach((count, key) => {
-            const [expected, actual] = key.split('->');
-            commonMistakes.push({ expected, actual, count });
-        });
-        commonMistakes.sort((a, b) => b.count - a.count);
-
-        return {
-            characterErrors,
-            commonMistakes: commonMistakes.slice(0, 5)
-        };
-    };
-
-    const handleTestComplete = (finalState: TypingState) => {
-        // Ensure we have both start and end time before proceeding
-        if (!finalState.startTime || !finalState.endTime) {
-            console.error('TypingAssessment: Missing start or end time, aborting');
-            return;
-        }
-
-        const actualText = finalState.typedChars.join('');
-        const timeInMinutes = (finalState.endTime - finalState.startTime) / 60000;
-
-        // Ensure we have a valid timing (prevent division by zero)
-        if (timeInMinutes <= 0) {
-            console.error('TypingAssessment: Invalid timing, aborting');
-            return;
-        }
-
-        const wordsTyped = actualText.trim().split(/\s+/).length;
-        const wpm = Math.round(wordsTyped / timeInMinutes);
-
-        // Calculate accuracy
-        const expectedChars = assessmentText.length;
-        const errors = Array.from(assessmentText).reduce((acc, char, i) =>
-            acc + (char !== actualText[i] ? 1 : 0), 0);
-        const accuracy = Math.round(((expectedChars - errors) / expectedChars) * 100);
-
-        // Analyze error patterns
-        const errorPatterns = analyzeErrorPatterns(assessmentText, actualText);
-
-        // Determine level based on WPM and accuracy
-        let level: 'beginner' | 'intermediate' | 'advanced';
-        if (wpm < 30 || accuracy < 90) {
-            level = 'beginner';
-        } else if (wpm < 60 || accuracy < 95) {
-            level = 'intermediate';
-        } else {
-            level = 'advanced';
-        }
-
-        console.log('TypingAssessment: Completed', {
-            level,
-            wpm,
-            accuracy,
-            errorPatterns,
-            startTime: finalState.startTime,
-            endTime: finalState.endTime,
-            timeInMinutes
-        });
-
-        onComplete(level, wpm, {
-            expectedText: assessmentText,
-            actualText,
-            accuracy,
-            errorPatterns
-        });
-    };
-
-    if (step === 'question') {
-        return (
-            <AssessmentContainer>
-                <Card>
-                    <Subtitle>Are you new to touch typing? </Subtitle>
-                    <Options>
-                        <Button primary onClick={() => handleSelfAssessment(true)}>
-                            Yes, I'm new to this.
-                        </Button>
-                        <Button outline onClick={() => handleSelfAssessment(false)}>
-                            No, I have some experience.
-                        </Button>
-                    </Options>
-                    <ProgressIndicator>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 16V12L10 10M12 8V8.01M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21Z"
-                                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        Your answer helps our AI personalize your learning experience
-                    </ProgressIndicator>
-                </Card>
-            </AssessmentContainer>
-        );
+        const mistakeKey = `${expected[i]}->${actual[i]}`;
+        mistakes.set(mistakeKey, (mistakes.get(mistakeKey) || 0) + 1);
+      }
     }
 
+    mistakes.forEach((count, key) => {
+      const [expected, actual] = key.split('->');
+      commonMistakes.push({ expected, actual, count });
+    });
+    commonMistakes.sort((a, b) => b.count - a.count);
+
+    return {
+      characterErrors,
+      commonMistakes: commonMistakes.slice(0, 5)
+    };
+  };
+
+  const handleTestComplete = (finalState: TypingState) => {
+    // Ensure we have both start and end time before proceeding
+    if (!finalState.startTime || !finalState.endTime) {
+      console.error('TypingAssessment: Missing start or end time, aborting');
+      return;
+    }
+
+    const actualText = finalState.typedChars.join('');
+    const timeInMinutes = (finalState.endTime - finalState.startTime) / 60000;
+
+    // Ensure we have a valid timing (prevent division by zero)
+    if (timeInMinutes <= 0) {
+      console.error('TypingAssessment: Invalid timing, aborting');
+      return;
+    }
+
+    const wordsTyped = actualText.trim().split(/\s+/).length;
+    const wpm = Math.round(wordsTyped / timeInMinutes);
+
+    // Calculate accuracy
+    const expectedChars = assessmentText.length;
+    const errors = Array.from(assessmentText).reduce((acc, char, i) =>
+      acc + (char !== actualText[i] ? 1 : 0), 0);
+    const accuracy = Math.round(((expectedChars - errors) / expectedChars) * 100);
+
+    // Analyze error patterns
+    const errorPatterns = analyzeErrorPatterns(assessmentText, actualText);
+
+    // Determine level based on WPM and accuracy
+    let level: 'beginner' | 'intermediate' | 'advanced';
+    if (wpm < 30 || accuracy < 90) {
+      level = 'beginner';
+    } else if (wpm < 60 || accuracy < 95) {
+      level = 'intermediate';
+    } else {
+      level = 'advanced';
+    }
+
+    console.log('TypingAssessment: Completed', {
+      level,
+      wpm,
+      accuracy,
+      errorPatterns,
+      startTime: finalState.startTime,
+      endTime: finalState.endTime,
+      timeInMinutes
+    });
+
+    onComplete(level, wpm, {
+      expectedText: assessmentText,
+      actualText,
+      accuracy,
+      errorPatterns
+    });
+  };
+
+  if (step === 'question') {
     return (
-        <AssessmentContainer>
-            <Card>
-                <TypingHeader>
-                    <Subtitle>AI-Powered Typing Assessment</Subtitle>
-                    <AssessmentText>
-                        Please type the following text to help our AI determine your current typing level:
-                    </AssessmentText>
-                    <TypingPrompt>Type the text below</TypingPrompt>
-                </TypingHeader>
-                <TypingArea
-                    text={assessmentText}
-                    onComplete={handleTestComplete}
-                    updateStatistics={(expectedChar, typedChar) => {
-                        // Optional: Add any additional statistics tracking here
-                    }}
-                />
-            </Card>
-        </AssessmentContainer>
+      <AssessmentContainer>
+        <Card>
+          <Subtitle>Are you new to touch typing? </Subtitle>
+          <Options>
+            <Button primary onClick={() => handleSelfAssessment(true)}>
+              Yes, I'm new to this.
+            </Button>
+            <Button outline onClick={() => handleSelfAssessment(false)}>
+              No, I have some experience.
+            </Button>
+          </Options>
+          <ProgressIndicator>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 16V12L10 10M12 8V8.01M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21Z"
+                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Your answer helps our AI personalize your learning experience
+          </ProgressIndicator>
+        </Card>
+      </AssessmentContainer>
     );
+  }
+
+  return (
+    <AssessmentContainer>
+      <Card>
+        <TypingHeader>
+          <Subtitle>AI-Powered Typing Assessment</Subtitle>
+          <AssessmentText>
+            Please type the following text to help our AI determine your current typing level:
+          </AssessmentText>
+          <TypingPrompt>Type the text below</TypingPrompt>
+        </TypingHeader>
+        <TypingArea
+          text={assessmentText}
+          onComplete={handleTestComplete}
+          updateStatistics={(expectedChar, typedChar) => {
+            // Optional: Add any additional statistics tracking here
+          }}
+          blockOnError={false}
+        />
+      </Card>
+    </AssessmentContainer>
+  );
 };
 
 export default TypingAssessment; 

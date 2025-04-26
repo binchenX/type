@@ -615,6 +615,9 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
                     setTypingState={setTypingState}
                     onComplete={handleLessonComplete}
                     showKeyboard={showKeyboard}
+                    blockOnError={planParams.type === 'level_based' ?
+                        planParams.level !== 'intermediate' :
+                        planParams.wpm < 30 || planParams.wpm >= 60}
                 />
             </TypingAreaWrapper>
 
