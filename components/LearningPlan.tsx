@@ -233,8 +233,8 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
     const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
     const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
     const [typingState, setTypingState] = useState<TypingState>({
-        startTime: null,
-        endTime: null,
+        startTime: undefined,
+        endTime: undefined,
         currentPosition: 0,
         errors: 0,
         typedChars: [],
@@ -497,8 +497,8 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
 
         // Reset typing state for next lesson
         setTypingState({
-            startTime: null,
-            endTime: null,
+            startTime: undefined,
+            endTime: undefined,
             currentPosition: 0,
             errors: 0,
             typedChars: [],

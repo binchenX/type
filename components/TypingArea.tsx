@@ -257,8 +257,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     } | null>(null);
 
     const [internalTypingState, setInternalTypingState] = useState<TypingState>({
-        startTime: null,
-        endTime: null,
+        startTime: undefined,
+        endTime: undefined,
         currentPosition: 0,
         errors: 0,
         typedChars: [],
@@ -343,7 +343,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         }
 
         // Initialize start time on first keypress
-        if (typingState.startTime === null && e.key.length === 1) {
+        if (typingState.startTime === undefined && e.key.length === 1) {
             setTypingState(prev => ({
                 ...prev,
                 startTime: Date.now()

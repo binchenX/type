@@ -174,8 +174,8 @@ export default function Home() {
     const [parsedItems, setParsedItems] = useState<ParsedMarkdownItem[]>([]);
     const [currentItemIndex, setCurrentItemIndex] = useState(0);
     const [typingState, setTypingState] = useState<TypingState>({
-        startTime: null,
-        endTime: null,
+        startTime: undefined,
+        endTime: undefined,
         currentPosition: 0,
         errors: 0,
         typedChars: [],
@@ -326,8 +326,8 @@ export default function Home() {
         if (parsed.length > 0) {
             setCurrentItemIndex(0);
             setTypingState({
-                startTime: null,
-                endTime: null,
+                startTime: undefined,
+                endTime: undefined,
                 currentPosition: 0,
                 errors: 0,
                 typedChars: [],
@@ -392,8 +392,8 @@ export default function Home() {
     const resetPractice = () => {
         setCurrentItemIndex(0);
         setTypingState({
-            startTime: null,
-            endTime: null,
+            startTime: undefined,
+            endTime: undefined,
             currentPosition: 0,
             errors: 0,
             typedChars: [],
@@ -428,8 +428,8 @@ export default function Home() {
 
             // Explicitly clear typingErrors to prevent persistence between items
             setTypingState({
-                startTime: null,
-                endTime: null,
+                startTime: undefined,
+                endTime: undefined,
                 currentPosition: 0,
                 errors: 0,
                 typedChars: [],
@@ -513,8 +513,8 @@ export default function Home() {
         if (currentItemIndex > 0) {
             setCurrentItemIndex(prev => prev - 1);
             setTypingState({
-                startTime: null,
-                endTime: null,
+                startTime: undefined,
+                endTime: undefined,
                 currentPosition: 0,
                 errors: 0,
                 typedChars: [],
@@ -577,8 +577,8 @@ export default function Home() {
         setParsedItems(items);
         setCurrentItemIndex(0);
         setTypingState({
-            startTime: null,
-            endTime: null,
+            startTime: undefined,
+            endTime: undefined,
             currentPosition: 0,
             errors: 0,
             typedChars: [],
