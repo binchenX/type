@@ -263,7 +263,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         errors: 0,
         typedChars: [],
         typingErrors: [],
-        typingWordErrors: []
+        typingWordErrors: [],
+        lastIncorrectChar: undefined
     });
 
     const typingState = externalTypingState || internalTypingState;
@@ -383,6 +384,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
                 // If blockOnError is true, don't advance the position
                 if (blockOnError) {
+                    // Store the last incorrect character to display it
+                    newTypingState.lastIncorrectChar = typedChar;
+
                     // Force the input value to match only the correct characters
                     if (inputRef.current) {
                         const correctText = newTypingState.typedChars.slice(0, currentPosition - 1).join('');
@@ -398,6 +402,10 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                     setTypingState(newTypingState);
                     return;
                 }
+            } else if (blockOnError && newTypingState.lastIncorrectChar) {
+                // If the user just typed the correct character after an error
+                // clear the lastIncorrectChar
+                newTypingState.lastIncorrectChar = undefined;
             }
 
             // Store the typed character (only if correct or if not blocking on error)
@@ -465,8 +473,15 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                     status = 'correct';
                 }
             } else if (index === typingState.currentPosition) {
-                // Current character position - always show as current
-                status = 'current';
+                // Current character position
+                // If we have a lastIncorrectChar, show it as incorrect
+                if (blockOnError && typingState.lastIncorrectChar) {
+                    status = 'incorrect';
+                    displayTooltip = true;
+                    tooltipChar = typingState.lastIncorrectChar;
+                } else {
+                    status = 'current';
+                }
             } else {
                 // Characters not yet typed
                 status = 'untyped';

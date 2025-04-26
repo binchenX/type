@@ -4,25 +4,29 @@ export type ParsedMarkdownItem = {
     level?: number;
 };
 
-export type TypingState = {
-    startTime: number | null;
-    endTime: number | null;
+export interface TypingError {
+    index: number;
+    expected: string;
+    actual: string;
+}
+
+export interface TypingWordError {
+    word: string;
+    typedWord: string;
+    startIndex: number;
+    endIndex: number;
+}
+
+export interface TypingState {
     currentPosition: number;
+    startTime?: number;
+    endTime?: number;
     errors: number;
     typedChars: string[];
-    typingErrors?: Array<{
-        index: number;
-        expected: string;
-        actual: string;
-    }>;
-    typingWordErrors?: Array<{
-        word: string;
-        typedWord: string;
-        startIndex: number;
-        endIndex: number;
-    }>;
-    lastIncorrectChar?: string; // Track the last incorrect character at current position
-};
+    typingErrors: TypingError[];
+    typingWordErrors: TypingWordError[];
+    lastIncorrectChar?: string;
+}
 
 export type TypingStats = {
     wpm: number;
