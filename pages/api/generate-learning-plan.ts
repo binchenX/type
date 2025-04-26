@@ -106,11 +106,6 @@ export default async function handler(
     try {
         console.log('API: Generating learning plan with params:', JSON.stringify(params, null, 2));
         const response = await llmService.generateLearningPlan(params);
-        console.log('API: Successfully generated plan:', {
-            success: response.success,
-            moduleCount: response.modules?.length || 0,
-            provider: response.provider
-        });
         res.status(200).json(response);
     } catch (error) {
         console.error('API: Error generating learning plan:', error);

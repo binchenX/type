@@ -207,11 +207,6 @@ export class GeminiProvider implements LLMProvider {
                 throw new Error('No valid practice sentences generated');
             }
 
-            // Log the generated sentences
-            practiceSections.forEach((sentence: string, index: number) => {
-                console.log(`  ${index + 1}: ${sentence}`);
-            });
-
             return {
                 success: true,
                 text: `Here are practice sentences focused on characters: ${charsList}`,
@@ -227,7 +222,6 @@ export class GeminiProvider implements LLMProvider {
 
     async generateLearningPlan(params: LearningPlanParams): Promise<GenerateLearningPlanResponse> {
         try {
-            console.log('Gemini provider: Starting learning plan generation');
 
             // Extract level and WPM based on params type
             let level: string;
@@ -242,7 +236,7 @@ export class GeminiProvider implements LLMProvider {
                 currentWpm = params.wpm;
             }
 
-            console.log('Generating plan for level:', level, 'with WPM:', currentWpm);
+            console.log('Gemini Generating plan for level:', level, 'with WPM:', currentWpm);
 
             const prompt = `Generate a structured typing practice plan. Return ONLY a JSON object (no markdown formatting, no code blocks) with the following structure:
 {
@@ -777,14 +771,10 @@ export class LLMService {
      */
     async generateLearningPlan(params: LearningPlanParams): Promise<GenerateLearningPlanResponse> {
         try {
-            console.log('LLMService: Starting learning plan generation');
-            console.log('LLMService: Checking available providers...');
             const availableProviders = await this.getAvailableProviders();
-            console.log('LLMService: Available providers:', availableProviders);
 
             // Try to use preferred provider first
             const provider = await this.getProvider();
-            console.log('LLMService: Selected provider:', provider?.name);
 
             if (!provider) {
                 console.log('LLMService: No provider available, using fallback');
@@ -792,10 +782,7 @@ export class LLMService {
             }
 
             try {
-                console.log(`LLMService: Generating plan with ${provider.name} provider`);
-                console.log('LLMService: Input params:', params);
                 const response = await provider.generateLearningPlan(params);
-                console.log(`LLMService: ${provider.name} response:`, JSON.stringify(response, null, 2));
                 return response;
             } catch (error) {
                 console.error(`LLMService: Error with ${provider.name} provider:`, error);

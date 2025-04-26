@@ -136,6 +136,7 @@ export function updateLearningProgress(progress: {
         savedPlan.progress = progress;
         savedPlan.lastUpdated = Date.now();
 
+        console.log('update learning progress');
         saveLearningPlan(savedPlan);
     } catch (error) {
         console.error('Failed to update learning progress:', error);

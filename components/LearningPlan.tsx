@@ -246,92 +246,104 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
 
     // First, try to load the learning plan from localStorage
     useEffect(() => {
-        const loadSavedPlan = () => {
+        const loadPlanData = async () => {
+            setIsLoading(true);
+            // First try to load from localStorage
             const savedPlan = loadLearningPlan();
 
-            // Check if we have a saved plan
+            // Check if we have a saved plan that matches our criteria
             if (savedPlan) {
-                // First compare the parameter types
-                if (savedPlan.planParams.type !== planParams.type) {
-                    console.log(`Plan type mismatch: saved=${savedPlan.planParams.type}, new=${planParams.type}, will generate new plan`);
-                    return;
+                // First validate that the saved plan has valid structure
+                let isValidPlan = true;
+
+                // Check that the plan has modules and they're an array
+                if (!Array.isArray(savedPlan.modules) || !savedPlan.modules.length) {
+                    console.error('Saved plan has invalid modules structure');
+                    isValidPlan = false;
+                } else {
+                    // Validate each module has a valid lessons array
+                    for (let i = 0; i < savedPlan.modules.length; i++) {
+                        const module = savedPlan.modules[i];
+                        if (!module || !Array.isArray(module.lessons) || !module.lessons.length) {
+                            console.error(`Module at index ${i} has invalid lessons structure`);
+                            isValidPlan = false;
+                            break;
+                        }
+                    }
+
+                    // Validate progress indices are valid
+                    if (savedPlan.progress) {
+                        const { currentModuleIndex, currentLessonIndex } = savedPlan.progress;
+
+                        // Check if indices point to valid items
+                        if (currentModuleIndex >= savedPlan.modules.length) {
+                            console.error('Saved plan has invalid currentModuleIndex');
+                            isValidPlan = false;
+                        } else if (currentLessonIndex >= savedPlan.modules[currentModuleIndex]?.lessons.length) {
+                            console.error('Saved plan has invalid currentLessonIndex');
+                            isValidPlan = false;
+                        }
+                    } else {
+                        console.error('Saved plan has no progress data');
+                        isValidPlan = false;
+                    }
                 }
 
-                // Type-specific parameter comparison
-                if (planParams.type === 'level_based' && savedPlan.planParams.type === 'level_based') {
+                // If invalid structure, don't try to use it
+                if (!isValidPlan) {
+                    console.error('Plan validation failed, generating new plan');
+                } else if (savedPlan.planParams.type !== planParams.type) {
+                    console.log(`Plan type mismatch: saved=${savedPlan.planParams.type}, new=${planParams.type}, will generate new plan`);
+                } else if (planParams.type === 'level_based' && savedPlan.planParams.type === 'level_based') {
                     const savedLevelParams = savedPlan.planParams;
                     const newLevelParams = planParams;
 
                     // Check if level matches
                     if (savedLevelParams.level !== newLevelParams.level) {
                         console.log(`Level mismatch: saved=${savedLevelParams.level}, new=${newLevelParams.level}, will generate new plan`);
-                        return;
+                    } else {
+                        // All parameters match, we can reuse the plan
+                        console.log('Restoring learning plan from localStorage - all parameters match', {
+                            level: savedLevelParams.level,
+                            wpm: savedLevelParams.currentWpm,
+                            moduleCount: savedPlan.modules.length,
+                            progress: `${savedPlan.progress.completedLessons}/${savedPlan.progress.totalLessons}`
+                        });
+
+                        setModules(savedPlan.modules);
+                        setCurrentModuleIndex(savedPlan.progress.currentModuleIndex);
+                        setCurrentLessonIndex(savedPlan.progress.currentLessonIndex);
+                        setIsLoading(false);
+                        return; // Exit early, no need to generate a plan
                     }
-
-                    // Check if WPM matches - ignore this first.
-                    // if (savedLevelParams.currentWpm !== newLevelParams.currentWpm) {
-                    //     console.log(`WPM mismatch: saved=${savedLevelParams.currentWpm}, new=${newLevelParams.currentWpm}, will generate new plan`);
-                    //     return;
-                    // }
-
-                    // All parameters match, we can reuse the plan
-                    console.log('Restoring learning plan from localStorage - all parameters match', {
-                        level: savedLevelParams.level,
-                        wpm: savedLevelParams.currentWpm,
-                        moduleCount: savedPlan.modules.length,
-                        progress: `${savedPlan.progress.completedLessons}/${savedPlan.progress.totalLessons}`
-                    });
-
-                    setModules(savedPlan.modules);
-                    setCurrentModuleIndex(savedPlan.progress.currentModuleIndex);
-                    setCurrentLessonIndex(savedPlan.progress.currentLessonIndex);
-                    setIsLoading(false);
-                    setRestoredFromStorage(true);
-                    setApiCallMade(true); // Prevent new API call
                 } else if (planParams.type === 'assessment' && savedPlan.planParams.type === 'assessment') {
-                    // For assessment plans, we should be more careful
                     const savedAssessParams = savedPlan.planParams;
                     const newAssessParams = planParams;
 
-                    // For assessment data, we could be more strict and require exact matches
-                    // or more lenient and just check WPM
                     if (savedAssessParams.wpm !== newAssessParams.wpm) {
                         console.log(`Assessment WPM mismatch: saved=${savedAssessParams.wpm}, new=${newAssessParams.wpm}, will generate new plan`);
-                        return;
+                    } else {
+                        // All parameters match, we can reuse the plan
+                        console.log('Restoring assessment-based learning plan from localStorage', {
+                            wpm: savedAssessParams.wpm,
+                            moduleCount: savedPlan.modules.length,
+                            progress: `${savedPlan.progress.completedLessons}/${savedPlan.progress.totalLessons}`
+                        });
+
+                        setModules(savedPlan.modules);
+                        setCurrentModuleIndex(savedPlan.progress.currentModuleIndex);
+                        setCurrentLessonIndex(savedPlan.progress.currentLessonIndex);
+                        setIsLoading(false);
+                        return; // Exit early, no need to generate a plan
                     }
-
-                    // All parameters match, we can reuse the plan
-                    console.log('Restoring assessment-based learning plan from localStorage', {
-                        wpm: savedAssessParams.wpm,
-                        moduleCount: savedPlan.modules.length,
-                        progress: `${savedPlan.progress.completedLessons}/${savedPlan.progress.totalLessons}`
-                    });
-
-                    setModules(savedPlan.modules);
-                    setCurrentModuleIndex(savedPlan.progress.currentModuleIndex);
-                    setCurrentLessonIndex(savedPlan.progress.currentLessonIndex);
-                    setIsLoading(false);
-                    setRestoredFromStorage(true);
-                    setApiCallMade(true); // Prevent new API call
                 } else {
                     console.log('Plan type combination not handled, will generate new plan');
                 }
             } else {
                 console.log('No saved plan found in localStorage, will generate new plan');
             }
-        };
 
-        loadSavedPlan();
-    }, [planParamsString]);
-
-    // If no saved plan was found, generate a new one
-    useEffect(() => {
-        // Skip API call if we restored from storage or if call was already made
-        if (restoredFromStorage || apiCallMade) return;
-
-        const generatePlan = async () => {
-            setApiCallMade(true);
-
+            // If we reach here, we need to generate a new plan
             try {
                 console.log('Generating new learning plan from API');
                 const response = await fetch('/api/generate-learning-plan', {
@@ -411,11 +423,33 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
             }
         };
 
-        generatePlan();
-    }, [planParamsString, apiCallMade, restoredFromStorage, planParams]);
+        loadPlanData();
+    }, [planParamsString]);
 
     const handleLessonComplete = () => {
+        // Safety check for modules array
+        if (!modules.length) {
+            console.error('No modules found when trying to complete lesson');
+            onExit();
+            return;
+        }
+
         const currentModule = modules[currentModuleIndex];
+
+        // Safety check for currentModule
+        if (!currentModule) {
+            console.error(`Module at index ${currentModuleIndex} not found when completing lesson`);
+            onExit();
+            return;
+        }
+
+        // Safety check for currentModule.lessons
+        if (!Array.isArray(currentModule.lessons) || !currentModule.lessons.length) {
+            console.error(`No lessons found in module ${currentModuleIndex} when completing lesson`);
+            onExit();
+            return;
+        }
+
         let newModuleIndex = currentModuleIndex;
         let newLessonIndex = currentLessonIndex;
 
@@ -426,6 +460,14 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
             // Move to first lesson of next module
             newModuleIndex = currentModuleIndex + 1;
             newLessonIndex = 0;
+
+            // Verify the next module has lessons
+            if (!modules[newModuleIndex] || !Array.isArray(modules[newModuleIndex].lessons) || !modules[newModuleIndex].lessons.length) {
+                console.error(`Next module at index ${newModuleIndex} has no valid lessons`);
+                clearLearningPlan();
+                onComplete();
+                return;
+            }
         } else {
             // Completed all modules
             clearLearningPlan(); // Clear saved plan on completion
@@ -437,9 +479,11 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
         setCurrentModuleIndex(newModuleIndex);
         setCurrentLessonIndex(newLessonIndex);
 
-        // Calculate progress data
+        // Calculate progress data safely
         const totalLessons = calculateTotalLessons(modules);
-        const completedLessons = modules.slice(0, newModuleIndex).reduce((sum, module) => sum + module.lessons.length, 0) + newLessonIndex;
+        const completedLessons = modules.slice(0, newModuleIndex).reduce((sum, module) => {
+            return sum + (Array.isArray(module.lessons) ? module.lessons.length : 0);
+        }, 0) + newLessonIndex;
 
         // Update progress in localStorage
         updateLearningProgress({
@@ -499,10 +543,41 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
         );
     }
 
+    // Add safety checks to prevent accessing undefined objects
     const currentModule = modules[currentModuleIndex];
-    const currentLesson = currentModule.lessons[currentLessonIndex];
+
+    // Check if currentModule exists
+    if (!currentModule) {
+        console.error(`Module at index ${currentModuleIndex} not found`);
+        return (
+            <PlanContainer>
+                <ModuleTitle>Error: Learning module not found</ModuleTitle>
+                <Button onClick={onExit}>Exit to Practice</Button>
+            </PlanContainer>
+        );
+    }
+
+    const currentLesson = currentModule.lessons?.[currentLessonIndex];
+
+    // Check if currentLesson exists
+    if (!currentLesson) {
+        console.error(`Lesson at index ${currentLessonIndex} not found in module ${currentModuleIndex}`);
+        return (
+            <PlanContainer>
+                <ModuleTitle>{currentModule.name}</ModuleTitle>
+                <ModuleDescription>{currentModule.description}</ModuleDescription>
+                <div style={{ margin: '2rem 0' }}>
+                    <p>Error: Lesson not found. This may be due to a data corruption issue.</p>
+                </div>
+                <Button onClick={handleExitWithClear}>Exit Learning Plan</Button>
+            </PlanContainer>
+        );
+    }
+
     const totalLessons = calculateTotalLessons(modules);
-    const completedLessons = modules.slice(0, currentModuleIndex).reduce((sum, module) => sum + module.lessons.length, 0) + currentLessonIndex;
+    const completedLessons = modules.slice(0, currentModuleIndex).reduce((sum, module) => {
+        return sum + (Array.isArray(module.lessons) ? module.lessons.length : 0);
+    }, 0) + currentLessonIndex;
     const progress = (completedLessons / totalLessons) * 100;
 
     return (
