@@ -176,69 +176,97 @@ export class GeminiProvider implements LLMProvider {
     }
 
     async generatePracticeText(request: GeneratePracticeRequest): Promise<GeneratePracticeResponse> {
-        try {
-            console.log('Gemini provider: generatePracticeText');
+        const MAX_RETRIES = 3;
+        let attempts = 0;
 
-            const charsList = request?.focusKeys?.join(', ') || '';
-            const prompt = buildPrompt(charsList);
+        while (attempts < MAX_RETRIES) {
+            attempts++;
+            try {
+                console.log(`Gemini provider: generatePracticeText (Attempt ${attempts}/${MAX_RETRIES})`);
 
-            // Get an instance of the generative AI
-            const ai = this.getGenerativeAI();
-            if (!ai) {
-                console.error('Gemini provider: API client initialization failed');
-                throw new Error('Gemini API client is not initialized');
+                const charsList = request?.focusKeys?.join(', ') || '';
+                const prompt = buildPrompt(charsList);
+
+                // Get an instance of the generative AI
+                const ai = this.getGenerativeAI();
+                if (!ai) {
+                    console.error('Gemini provider: API client initialization failed');
+                    throw new Error('Gemini API client is not initialized');
+                }
+
+                // Generate content with Gemini
+                console.log(`Gemini provider: Calling Gemini API with model ${this.model}`);
+                const model = ai.getGenerativeModel({ model: this.model });
+                const result = await model.generateContent(prompt);
+                const text = result.response.text();
+
+                // Process the response text into separate practice sentences
+                const practiceSections = text
+                    .split('\n')
+                    .map((line: string) => line.trim())
+                    .filter((line: string) => line.length > 0)
+                    .slice(0, 5); // Limit to a maximum of 5 items
+
+                if (practiceSections.length === 0) {
+                    console.error(`Attempt ${attempts}/${MAX_RETRIES} - Gemini provider: No valid practice sentences could be extracted from response`);
+
+                    if (attempts >= MAX_RETRIES) {
+                        throw new Error('No valid practice sentences generated after multiple attempts');
+                    }
+                    // Try again
+                    console.log(`Retrying... (${attempts}/${MAX_RETRIES})`);
+                    continue;
+                }
+
+                console.log(`Successfully generated practice text on attempt ${attempts}`);
+                return {
+                    success: true,
+                    text: `Here are practice sentences focused on characters: ${charsList}`,
+                    practiceSections,
+                    prompt, // Include the prompt for debugging/transparency
+                    provider: 'gemini'
+                };
+            } catch (error) {
+                console.error(`Attempt ${attempts}/${MAX_RETRIES} - Error generating with Gemini:`, error);
+
+                if (attempts >= MAX_RETRIES) {
+                    console.error('Max retries reached, falling back to default practice text');
+                    throw error;
+                }
+
+                console.log(`Retrying... (${attempts}/${MAX_RETRIES})`);
+                // Short delay before retrying to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
-
-            // Generate content with Gemini
-            console.log(`Gemini provider: Calling Gemini API with model ${this.model}`);
-            const model = ai.getGenerativeModel({ model: this.model });
-            const result = await model.generateContent(prompt);
-            const text = result.response.text();
-
-            // Process the response text into separate practice sentences
-            const practiceSections = text
-                .split('\n')
-                .map((line: string) => line.trim())
-                .filter((line: string) => line.length > 0)
-                .slice(0, 5); // Limit to a maximum of 5 items
-
-            if (practiceSections.length === 0) {
-                console.error('Gemini provider: No valid practice sentences could be extracted from response');
-                throw new Error('No valid practice sentences generated');
-            }
-
-            return {
-                success: true,
-                text: `Here are practice sentences focused on characters: ${charsList}`,
-                practiceSections,
-                prompt, // Include the prompt for debugging/transparency
-                provider: 'gemini'
-            };
-        } catch (error) {
-            console.error('Error generating with Gemini:', error);
-            throw error;
         }
+
+        // This should never be reached as we throw inside the loop if max retries is exceeded
+        throw new Error('Failed to generate practice text after multiple attempts');
     }
 
     async generateLearningPlan(params: LearningPlanParams): Promise<GenerateLearningPlanResponse> {
-        try {
+        const MAX_RETRIES = 3;
+        let attempts = 0;
 
-            // Extract level and WPM based on params type
-            let level: string;
-            let currentWpm: number;
+        while (attempts < MAX_RETRIES) {
+            attempts++;
+            try {
+                // Extract level and WPM based on params type
+                let level: string;
+                let currentWpm: number;
 
-            if (params.type === 'level_based') {
-                level = params.level;
-                currentWpm = params.currentWpm;
-            } else {
-                // For assessment-based, use WPM from assessment
-                level = params.wpm < 30 ? 'beginner' : params.wpm < 60 ? 'intermediate' : 'advanced';
-                currentWpm = params.wpm;
-            }
+                if (params.type === 'level_based') {
+                    level = params.level;
+                    currentWpm = params.currentWpm;
+                } else {
+                    // For assessment-based, use WPM from assessment
+                    level = params.wpm < 30 ? 'beginner' : params.wpm < 60 ? 'intermediate' : 'advanced';
+                    currentWpm = params.wpm;
+                }
 
-            console.log('Gemini Generating plan for level:', level, 'with WPM:', currentWpm);
+                console.log(`Gemini Generating plan for level: ${level} with WPM: ${currentWpm} (Attempt ${attempts}/${MAX_RETRIES})`);
 
-            const prompt = `Generate a structured typing practice plan. Return ONLY a JSON object (no markdown formatting, no code blocks) with the following structure:
+                const prompt = `Generate a structured typing practice plan. Return ONLY a JSON object (no markdown formatting, no code blocks) with the following structure:
 {
     "modules": [
         {
@@ -259,56 +287,73 @@ export class GeminiProvider implements LLMProvider {
 The plan should be tailored for a ${level} level typist with current speed of ${currentWpm} WPM.
 Include 2-3 modules, each with 2-3 lessons. Make the content engaging and progressively challenging.`;
 
-            const ai = this.getGenerativeAI();
-            if (!ai) {
-                throw new Error('Gemini AI not initialized');
-            }
-
-            const model = ai.getGenerativeModel({ model: this.model });
-            const result = await model.generateContent(prompt);
-            const response = result.response.text();
-
-            // Clean the response by removing any markdown formatting
-            const cleanedResponse = response
-                .replace(/```json\s*/g, '')
-                .replace(/```\s*/g, '')
-                .trim();
-
-            try {
-                const parsedPlan = JSON.parse(cleanedResponse);
-
-                // Validate the structure
-                if (!parsedPlan.modules || !Array.isArray(parsedPlan.modules)) {
-                    throw new Error('Invalid plan structure: missing or invalid modules array');
+                const ai = this.getGenerativeAI();
+                if (!ai) {
+                    throw new Error('Gemini AI not initialized');
                 }
 
-                // Validate each module and lesson
-                parsedPlan.modules.forEach((module: any, moduleIndex: number) => {
-                    if (!module.name || !module.description || !Array.isArray(module.lessons)) {
-                        throw new Error(`Invalid module structure at index ${moduleIndex}`);
-                    }
-                    module.lessons.forEach((lesson: any, lessonIndex: number) => {
-                        if (!lesson.title || !lesson.description || !lesson.content || typeof lesson.targetWpm !== 'number') {
-                            throw new Error(`Invalid lesson structure in module ${moduleIndex}, lesson ${lessonIndex}`);
-                        }
-                    });
-                });
+                const model = ai.getGenerativeModel({ model: this.model });
+                const result = await model.generateContent(prompt);
+                const response = result.response.text();
 
-                return {
-                    success: true,
-                    modules: parsedPlan.modules,
-                    provider: 'gemini'
-                };
-            } catch (parseError) {
-                console.error('Failed to parse learning plan:', parseError);
-                console.error('Raw response:', response);
-                console.error('Cleaned response:', cleanedResponse);
-                throw new Error('Failed to parse learning plan');
+                // Clean the response by removing any markdown formatting
+                const cleanedResponse = response
+                    .replace(/```json\s*/g, '')
+                    .replace(/```\s*/g, '')
+                    .trim();
+
+                try {
+                    const parsedPlan = JSON.parse(cleanedResponse);
+
+                    // Validate the structure
+                    if (!parsedPlan.modules || !Array.isArray(parsedPlan.modules)) {
+                        throw new Error('Invalid plan structure: missing or invalid modules array');
+                    }
+
+                    // Validate each module and lesson
+                    parsedPlan.modules.forEach((module: any, moduleIndex: number) => {
+                        if (!module.name || !module.description || !Array.isArray(module.lessons)) {
+                            throw new Error(`Invalid module structure at index ${moduleIndex}`);
+                        }
+                        module.lessons.forEach((lesson: any, lessonIndex: number) => {
+                            if (!lesson.title || !lesson.description || !lesson.content || typeof lesson.targetWpm !== 'number') {
+                                throw new Error(`Invalid lesson structure in module ${moduleIndex}, lesson ${lessonIndex}`);
+                            }
+                        });
+                    });
+
+                    console.log(`Successfully parsed learning plan on attempt ${attempts}`);
+                    return {
+                        success: true,
+                        modules: parsedPlan.modules,
+                        provider: 'gemini'
+                    };
+                } catch (parseError) {
+                    console.error(`Attempt ${attempts}/${MAX_RETRIES} - Failed to parse learning plan:`, parseError);
+                    console.error('Raw response:', response);
+                    console.error('Cleaned response:', cleanedResponse);
+
+                    if (attempts >= MAX_RETRIES) {
+                        console.error('Max retries reached, falling back to default plan');
+                        throw new Error('Failed to parse learning plan after multiple attempts');
+                    }
+                    console.log(`Retrying... (${attempts}/${MAX_RETRIES})`);
+                    // Continue to next retry attempt
+                }
+            } catch (error) {
+                if (attempts >= MAX_RETRIES) {
+                    console.error('Max retries reached, falling back to default plan');
+                    throw error;
+                }
+                console.error(`Attempt ${attempts}/${MAX_RETRIES} - Error generating learning plan:`, error);
+                console.log(`Retrying... (${attempts}/${MAX_RETRIES})`);
+                // Short delay before retrying to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
-        } catch (error) {
-            console.error('Error generating learning plan:', error);
-            throw error;
         }
+
+        // This should never be reached as we throw inside the loop if max retries is exceeded
+        throw new Error('Failed to generate learning plan after multiple attempts');
     }
 }
 
@@ -684,31 +729,63 @@ export class LLMService {
      * Generate practice text using the first available provider
      */
     async generatePracticeText(request: GeneratePracticeRequest): Promise<GeneratePracticeResponse> {
-        console.log('Checking available LLM providers...');
+        console.log('LLMService: Starting practice text generation process');
 
-        for (const provider of this.providers) {
+        // Try each provider in sequence
+        for (let i = 0; i < this.providers.length; i++) {
+            const provider = this.providers[i];
+            const isFallbackProvider = provider.name === 'fallback';
+
             try {
-                console.log(`Checking availability of ${provider.name} provider...`);
+                console.log(`LLMService: Checking availability of ${provider.name} provider...`);
                 const isAvailable = await provider.isAvailable();
-                console.log(`${provider.name} provider availability: ${isAvailable}`);
 
-                if (isAvailable) {
-                    console.log(`---------------------------------------`);
-                    console.log(`USING ${provider.name.toUpperCase()} PROVIDER FOR TEXT GENERATION`);
-                    console.log(`---------------------------------------`);
+                if (!isAvailable) {
+                    console.log(`LLMService: ${provider.name} provider is not available, trying next provider`);
+                    continue;
+                }
+
+                console.log(`---------------------------------------`);
+                console.log(`LLMService: USING ${provider.name.toUpperCase()} PROVIDER`);
+                console.log(`---------------------------------------`);
+
+                try {
                     const result = await provider.generatePracticeText(request);
                     result.provider = provider.name;
-                    result.text = `${result.text} (via ${provider.name})`;
+
+                    // Add a note about which provider was used
+                    if (!result.text.includes(`(via ${provider.name})`)) {
+                        result.text = `${result.text} (via ${provider.name})`;
+                    }
+
+                    console.log(`LLMService: Successfully generated practice text with ${provider.name} provider`);
                     return result;
+                } catch (error: any) {
+                    console.error(`LLMService: Error with ${provider.name} provider:`, error);
+
+                    if (isFallbackProvider) {
+                        // If even the fallback provider fails, there's nothing left to try
+                        throw new Error(`Fallback provider failed: ${error.message || 'Unknown error'}`);
+                    }
+
+                    console.log(`LLMService: Will try next provider`);
+                    // Continue to the next provider
                 }
-            } catch (error) {
-                console.error(`Error with ${provider.name} provider:`, error);
+            } catch (error: any) {
+                console.error(`LLMService: Error checking ${provider.name} provider:`, error);
+
+                if (isFallbackProvider) {
+                    // If even the fallback provider fails, there's nothing left to try
+                    throw new Error(`Critical failure in all providers: ${error.message || 'Unknown error'}`);
+                }
+
                 // Continue to the next provider
+                console.log(`LLMService: Will try next provider`);
             }
         }
 
         // If we get here, all providers failed
-        console.error('All LLM providers failed to generate practice text');
+        console.error('LLMService: All LLM providers failed to generate practice text');
         throw new Error('All LLM providers failed to generate practice text');
     }
 
@@ -770,29 +847,77 @@ export class LLMService {
      * Generate a learning plan using the first available provider
      */
     async generateLearningPlan(params: LearningPlanParams): Promise<GenerateLearningPlanResponse> {
-        try {
-            const availableProviders = await this.getAvailableProviders();
+        console.log('LLMService: Starting learning plan generation process');
 
-            // Try to use preferred provider first
-            const provider = await this.getProvider();
-
-            if (!provider) {
-                console.log('LLMService: No provider available, using fallback');
-                return getFallbackLearningPlan(params);
-            }
+        // Try each provider in sequence
+        for (let i = 0; i < this.providers.length; i++) {
+            const provider = this.providers[i];
+            const isFallbackProvider = provider.name === 'fallback';
 
             try {
-                const response = await provider.generateLearningPlan(params);
-                return response;
-            } catch (error) {
-                console.error(`LLMService: Error with ${provider.name} provider:`, error);
-                console.log('LLMService: Falling back to default plan');
-                return getFallbackLearningPlan(params);
+                console.log(`LLMService: Checking availability of ${provider.name} provider...`);
+                const isAvailable = await provider.isAvailable();
+
+                if (!isAvailable) {
+                    console.log(`LLMService: ${provider.name} provider is not available, trying next provider`);
+                    continue;
+                }
+
+                console.log(`---------------------------------------`);
+                console.log(`LLMService: USING ${provider.name.toUpperCase()} PROVIDER FOR LEARNING PLAN`);
+                console.log(`---------------------------------------`);
+
+                try {
+                    const result = await provider.generateLearningPlan(params);
+                    result.provider = provider.name;
+
+                    console.log(`LLMService: Successfully generated learning plan with ${provider.name} provider`);
+                    return result;
+                } catch (error: any) {
+                    console.error(`LLMService: Error with ${provider.name} provider:`, error);
+
+                    if (isFallbackProvider) {
+                        // If even the fallback provider fails, there's nothing left to try
+                        console.error('LLMService: Fallback provider failed, returning error state');
+                        return {
+                            success: false,
+                            modules: [],
+                            error: `Fallback provider failed: ${error.message || 'Unknown error'}`,
+                            provider: 'none'
+                        };
+                    }
+
+                    console.log(`LLMService: Will try next provider`);
+                    // Continue to the next provider
+                }
+            } catch (error: any) {
+                console.error(`LLMService: Error checking ${provider.name} provider:`, error);
+
+                if (isFallbackProvider) {
+                    // If even the fallback provider fails, return an error state
+                    console.error('LLMService: Critical failure in all providers');
+                    return {
+                        success: false,
+                        modules: [],
+                        error: `Critical failure in all providers: ${error.message || 'Unknown error'}`,
+                        provider: 'none'
+                    };
+                }
+
+                // Continue to the next provider
+                console.log(`LLMService: Will try next provider`);
             }
-        } catch (error) {
-            console.error('LLMService: Error in generateLearningPlan:', error);
-            return getFallbackLearningPlan(params);
         }
+
+        // If we get here, all providers failed but we still need to return something
+        // This should be unreachable as the fallback provider should always be available
+        console.error('LLMService: All LLM providers failed to generate learning plan');
+        return {
+            success: false,
+            modules: [],
+            error: 'All LLM providers failed to generate learning plan',
+            provider: 'none'
+        };
     }
 }
 
