@@ -21,6 +21,7 @@ import {
 import TypingAssessment from '@/components/TypingAssessment';
 import LearningPlan from '@/components/LearningPlan';
 import { LevelBasedPlanParams, AssessmentBasedPlanParams } from '@/services/llmService';
+import { loadLearningPlan, clearLearningPlan } from '@/utils/learningStorage';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -203,6 +204,7 @@ export default function Home() {
         level: 'beginner',
         currentWpm: 0
     });
+    const [shouldRestoreLearningPlan, setShouldRestoreLearningPlan] = useState(true);
 
     // Load content from localStorage or public directory on initial component mount
     useEffect(() => {
@@ -333,6 +335,40 @@ export default function Home() {
             setIsCompleted(false);
         }
     }, [uploadedContent]);
+
+    // Check for saved learning plan on initial load
+    useEffect(() => {
+        const checkForSavedLearningPlan = () => {
+            try {
+                // Only check for a saved plan if the flag is true
+                if (!shouldRestoreLearningPlan) return;
+
+                const savedPlan = loadLearningPlan();
+                if (savedPlan) {
+                    console.log('Found saved learning plan, restoring learning mode');
+                    setLearningPlanParams(savedPlan.planParams);
+                    setMode('learning');
+
+                    // Set the appropriate user level if it's a level-based plan
+                    if (savedPlan.planParams.type === 'level_based') {
+                        setUserLevel(savedPlan.planParams.level);
+                        setActiveLevel(savedPlan.planParams.level);
+                    } else if (savedPlan.planParams.type === 'assessment') {
+                        // For assessment-based plans, we don't have a specific level in the toolbar
+                        setUserLevel('beginner'); // Just to ensure the learning plan loads
+                        setActiveLevel(null);
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking for saved learning plan:', error);
+            }
+        };
+
+        // Only check for saved plan after initial content is loaded
+        if (!isLoading && parsedItems.length > 0) {
+            checkForSavedLearningPlan();
+        }
+    }, [isLoading, parsedItems.length, shouldRestoreLearningPlan]);
 
     const handleFileUpload = (content: string) => {
         // Apply typographic quote replacement
@@ -598,10 +634,42 @@ export default function Home() {
             };
         }
     ) => {
+        // Enable learning plan restoration
+        setShouldRestoreLearningPlan(true);
+
         setUserLevel(level);
         setActiveLevel(level);
         setInitialWpm(wpm);
 
+        // First check if there's a saved learning plan we can reuse for this level
+        const savedPlan = loadLearningPlan();
+        
+        // For assessment-based plans, we should regenerate if:
+        // 1. The type changes (level_based <-> assessment)
+        // 2. For level_based: if level or WPM changes
+        // 3. For assessment: if assessment data changes (we'll always regenerate since it's likely new data)
+        
+        if (savedPlan) {
+            if (savedPlan.planParams.type === 'level_based' && !assessmentData) {
+                // We have a saved level-based plan and no new assessment data
+                const savedParams = savedPlan.planParams as LevelBasedPlanParams;
+                if (savedParams.level === level && savedParams.currentWpm === wpm) {
+                    console.log('Reusing existing level-based learning plan from localStorage after assessment');
+                    // Reuse the existing plan
+                    setMode('learning');
+                    setLearningPlanParams(savedPlan.planParams);
+                    return;
+                } else {
+                    console.log(`Parameters changed (saved: level=${savedParams.level}, wpm=${savedParams.currentWpm}, new: level=${level}, wpm=${wpm}), generating new plan`);
+                }
+            } else {
+                console.log('Different plan type or new assessment data available, generating new plan');
+            }
+        }
+        
+        // No matching saved plan or parameters differ, create a new one
+        console.log(`Creating new learning plan from assessment: level=${level}, wpm=${wpm}`);
+        
         // If we have assessment data, use it for more personalized learning plan
         if (assessmentData) {
             setMode('learning');
@@ -623,25 +691,44 @@ export default function Home() {
     };
 
     const handleLearningComplete = () => {
+        // Clear saved learning plan on completion
+        clearLearningPlan();
+        // Switch back to practice mode and reset learning state
         setMode('practice');
+        setUserLevel(null);
+        setActiveLevel(null);
     };
 
     const handleExitLearning = () => {
+        // Clear saved learning plan when manually exiting
+        clearLearningPlan();
+        // Switch back to practice mode and reset learning state
         setMode('practice');
+        setUserLevel(null);
+        setActiveLevel(null);
     };
 
     const startPractice = () => {
+        // Don't clear learning plan, just prevent auto-restoration
+        setShouldRestoreLearningPlan(false);
+
         setMode('practice');
     };
 
     // Function to jump directly to markdown upload
     const jumpToMarkdownUpload = () => {
+        // Don't clear learning plan, just prevent auto-restoration
+        setShouldRestoreLearningPlan(false);
+
         setMode('practice');
         setShowUploadArea(true);
     };
 
     // Functions to load different content types
     const loadQuotes = async () => {
+        // Don't clear learning plan, just prevent auto-restoration
+        setShouldRestoreLearningPlan(false);
+
         setIsLoading(true);
         try {
             const content = await loadMarkdownFile('/data/quotes.md');
@@ -660,17 +747,44 @@ export default function Home() {
     };
 
     const handleCustomUpload = () => {
+        // Don't clear learning plan, just prevent auto-restoration
+        setShouldRestoreLearningPlan(false);
+
         setMode('custom');
         setShowUploadArea(true);
     };
 
     const startLearning = (level: 'beginner' | 'intermediate' | 'advanced', wpm: number) => {
         console.log(`startLearning called with level=${level}, wpm=${wpm}`);
+
+        // Enable learning plan restoration
+        setShouldRestoreLearningPlan(true);
+
+        // First check if there's a saved learning plan we can reuse
+        const savedPlan = loadLearningPlan();
+        if (savedPlan && savedPlan.planParams.type === 'level_based') {
+            const savedParams = savedPlan.planParams as LevelBasedPlanParams;
+            // Check if both level AND wpm match what we have saved
+            if (savedParams.level === level && savedParams.currentWpm === wpm) {
+                console.log('Reusing existing learning plan from localStorage');
+                // Reuse the existing plan
+                setMode('learning');
+                setUserLevel(level);
+                setActiveLevel(level);
+                setLearningPlanParams(savedPlan.planParams);
+                return;
+            } else {
+                console.log(`Parameters changed (saved: level=${savedParams.level}, wpm=${savedParams.currentWpm}, new: level=${level}, wpm=${wpm}), generating new plan`);
+            }
+        }
+
+        // No matching saved plan or parameters differ, create a new one
+        console.log(`Creating new learning plan for level=${level}, wpm=${wpm}`);
         // Set the mode to learning
         setMode('learning');
         // Set the userLevel for tracking purposes
         setUserLevel(level);
-        // Directly set the learning plan parameters
+        // Directly set the learning plan parameters for a new plan
         setLearningPlanParams({
             type: 'level_based',
             level,
@@ -678,8 +792,6 @@ export default function Home() {
         });
         // Set the activeLevel to highlight the correct button
         setActiveLevel(level);
-
-        console.log(`Learning plan parameters set: level=${level}, wpm=${wpm}`);
     };
 
     return (
@@ -696,6 +808,8 @@ export default function Home() {
                     <ToolbarButton
                         active={mode === 'assessment'}
                         onClick={() => {
+                            // Don't clear learning plan, just prevent auto-restoration when explicitly navigating
+                            setShouldRestoreLearningPlan(false);
                             setMode('assessment');
                             setActiveLevel(null);
                         }}
@@ -717,6 +831,8 @@ export default function Home() {
                     <ToolbarButton
                         active={mode === 'practice'}
                         onClick={() => {
+                            // Don't clear learning plan, just prevent auto-restoration when explicitly navigating
+                            setShouldRestoreLearningPlan(false);
                             loadQuotes();
                             setActiveLevel(null);
                         }}
@@ -726,6 +842,8 @@ export default function Home() {
                     <ToolbarButton
                         active={mode === 'custom'}
                         onClick={() => {
+                            // Don't clear learning plan, just prevent auto-restoration when explicitly navigating
+                            setShouldRestoreLearningPlan(false);
                             jumpToMarkdownUpload();
                             setActiveLevel(null);
                         }}

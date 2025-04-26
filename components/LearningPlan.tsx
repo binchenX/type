@@ -4,6 +4,7 @@ import TypingArea from './TypingArea';
 import Stats from './Stats';
 import { TypingState } from '@/types';
 import { LevelBasedPlanParams, AssessmentBasedPlanParams, LearningPlanParams } from '@/services/llmService';
+import { StoredLearningPlan, saveLearningPlan, loadLearningPlan, updateLearningProgress, clearLearningPlan } from '@/utils/learningStorage';
 
 const PlanContainer = styled.div`
   width: 100%;
@@ -212,6 +213,13 @@ interface LearningPlanProps {
     onExit: () => void;
 }
 
+const calculateTotalLessons = (modules: Module[]): number => {
+    if (!modules || !Array.isArray(modules)) return 0;
+    return modules.reduce((sum, module) => {
+        return sum + (Array.isArray(module.lessons) ? module.lessons.length : 0);
+    }, 0);
+};
+
 const LearningPlan: React.FC<LearningPlanProps> = ({
     planParams,
     onComplete,
@@ -219,10 +227,6 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
 }) => {
     // Log only once when component mounts or when planParams changes meaningfully
     const planParamsString = JSON.stringify(planParams);
-
-    // Only log on initial mount or meaningful changes to avoid spam
-    useEffect(() => {
-    }, [planParamsString]);
 
     const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
     const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
@@ -238,15 +242,98 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
     const [modules, setModules] = useState<Module[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [apiCallMade, setApiCallMade] = useState(false);
+    const [restoredFromStorage, setRestoredFromStorage] = useState(false);
 
+    // First, try to load the learning plan from localStorage
     useEffect(() => {
-        // Prevent multiple API calls for the same parameters
-        if (apiCallMade) return;
+        const loadSavedPlan = () => {
+            const savedPlan = loadLearningPlan();
+
+            // Check if we have a saved plan
+            if (savedPlan) {
+                // First compare the parameter types
+                if (savedPlan.planParams.type !== planParams.type) {
+                    console.log(`Plan type mismatch: saved=${savedPlan.planParams.type}, new=${planParams.type}, will generate new plan`);
+                    return;
+                }
+
+                // Type-specific parameter comparison
+                if (planParams.type === 'level_based' && savedPlan.planParams.type === 'level_based') {
+                    const savedLevelParams = savedPlan.planParams;
+                    const newLevelParams = planParams;
+
+                    // Check if level matches
+                    if (savedLevelParams.level !== newLevelParams.level) {
+                        console.log(`Level mismatch: saved=${savedLevelParams.level}, new=${newLevelParams.level}, will generate new plan`);
+                        return;
+                    }
+
+                    // Check if WPM matches - ignore this first.
+                    // if (savedLevelParams.currentWpm !== newLevelParams.currentWpm) {
+                    //     console.log(`WPM mismatch: saved=${savedLevelParams.currentWpm}, new=${newLevelParams.currentWpm}, will generate new plan`);
+                    //     return;
+                    // }
+
+                    // All parameters match, we can reuse the plan
+                    console.log('Restoring learning plan from localStorage - all parameters match', {
+                        level: savedLevelParams.level,
+                        wpm: savedLevelParams.currentWpm,
+                        moduleCount: savedPlan.modules.length,
+                        progress: `${savedPlan.progress.completedLessons}/${savedPlan.progress.totalLessons}`
+                    });
+
+                    setModules(savedPlan.modules);
+                    setCurrentModuleIndex(savedPlan.progress.currentModuleIndex);
+                    setCurrentLessonIndex(savedPlan.progress.currentLessonIndex);
+                    setIsLoading(false);
+                    setRestoredFromStorage(true);
+                    setApiCallMade(true); // Prevent new API call
+                } else if (planParams.type === 'assessment' && savedPlan.planParams.type === 'assessment') {
+                    // For assessment plans, we should be more careful
+                    const savedAssessParams = savedPlan.planParams;
+                    const newAssessParams = planParams;
+
+                    // For assessment data, we could be more strict and require exact matches
+                    // or more lenient and just check WPM
+                    if (savedAssessParams.wpm !== newAssessParams.wpm) {
+                        console.log(`Assessment WPM mismatch: saved=${savedAssessParams.wpm}, new=${newAssessParams.wpm}, will generate new plan`);
+                        return;
+                    }
+
+                    // All parameters match, we can reuse the plan
+                    console.log('Restoring assessment-based learning plan from localStorage', {
+                        wpm: savedAssessParams.wpm,
+                        moduleCount: savedPlan.modules.length,
+                        progress: `${savedPlan.progress.completedLessons}/${savedPlan.progress.totalLessons}`
+                    });
+
+                    setModules(savedPlan.modules);
+                    setCurrentModuleIndex(savedPlan.progress.currentModuleIndex);
+                    setCurrentLessonIndex(savedPlan.progress.currentLessonIndex);
+                    setIsLoading(false);
+                    setRestoredFromStorage(true);
+                    setApiCallMade(true); // Prevent new API call
+                } else {
+                    console.log('Plan type combination not handled, will generate new plan');
+                }
+            } else {
+                console.log('No saved plan found in localStorage, will generate new plan');
+            }
+        };
+
+        loadSavedPlan();
+    }, [planParamsString]);
+
+    // If no saved plan was found, generate a new one
+    useEffect(() => {
+        // Skip API call if we restored from storage or if call was already made
+        if (restoredFromStorage || apiCallMade) return;
 
         const generatePlan = async () => {
             setApiCallMade(true);
 
             try {
+                console.log('Generating new learning plan from API');
                 const response = await fetch('/api/generate-learning-plan', {
                     method: 'POST',
                     headers: {
@@ -254,7 +341,6 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
                     },
                     body: JSON.stringify(planParams)
                 });
-
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
@@ -265,6 +351,24 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
                 const data = await response.json();
                 if (data.modules && Array.isArray(data.modules)) {
                     setModules(data.modules);
+
+                    // Calculate total lessons for progress tracking
+                    const totalLessons = calculateTotalLessons(data.modules);
+
+                    // Save the new plan to localStorage
+                    const planToSave: StoredLearningPlan = {
+                        modules: data.modules,
+                        planParams,
+                        progress: {
+                            currentModuleIndex: 0,
+                            currentLessonIndex: 0,
+                            completedLessons: 0,
+                            totalLessons
+                        },
+                        lastUpdated: Date.now()
+                    };
+
+                    saveLearningPlan(planToSave);
                 } else {
                     console.error('LearningPlan: Invalid response format:', data);
                     throw new Error('Invalid learning plan format');
@@ -285,27 +389,65 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
                     }]
                 }];
                 setModules(fallbackModules);
+
+                // Save fallback plan to localStorage
+                const totalLessons = calculateTotalLessons(fallbackModules);
+
+                const fallbackPlan: StoredLearningPlan = {
+                    modules: fallbackModules,
+                    planParams,
+                    progress: {
+                        currentModuleIndex: 0,
+                        currentLessonIndex: 0,
+                        completedLessons: 0,
+                        totalLessons
+                    },
+                    lastUpdated: Date.now()
+                };
+
+                saveLearningPlan(fallbackPlan);
             } finally {
                 setIsLoading(false);
             }
         };
 
         generatePlan();
-    }, [planParamsString, apiCallMade]);
+    }, [planParamsString, apiCallMade, restoredFromStorage, planParams]);
 
     const handleLessonComplete = () => {
         const currentModule = modules[currentModuleIndex];
+        let newModuleIndex = currentModuleIndex;
+        let newLessonIndex = currentLessonIndex;
+
         if (currentLessonIndex < currentModule.lessons.length - 1) {
             // Move to next lesson in current module
-            setCurrentLessonIndex(prev => prev + 1);
+            newLessonIndex = currentLessonIndex + 1;
         } else if (currentModuleIndex < modules.length - 1) {
             // Move to first lesson of next module
-            setCurrentModuleIndex(prev => prev + 1);
-            setCurrentLessonIndex(0);
+            newModuleIndex = currentModuleIndex + 1;
+            newLessonIndex = 0;
         } else {
             // Completed all modules
+            clearLearningPlan(); // Clear saved plan on completion
             onComplete();
+            return;
         }
+
+        // Set new indices
+        setCurrentModuleIndex(newModuleIndex);
+        setCurrentLessonIndex(newLessonIndex);
+
+        // Calculate progress data
+        const totalLessons = calculateTotalLessons(modules);
+        const completedLessons = modules.slice(0, newModuleIndex).reduce((sum, module) => sum + module.lessons.length, 0) + newLessonIndex;
+
+        // Update progress in localStorage
+        updateLearningProgress({
+            currentModuleIndex: newModuleIndex,
+            currentLessonIndex: newLessonIndex,
+            completedLessons,
+            totalLessons
+        });
 
         // Reset typing state for next lesson
         setTypingState({
@@ -319,16 +461,28 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
         });
     };
 
+    const handleExitWithClear = () => {
+        // Clear saved plan if user manually exits
+        clearLearningPlan();
+        onExit();
+    };
+
     if (isLoading) {
         return (
             <PlanContainer>
                 <LoadingContainer>
                     <LoadingSpinner />
-                    <LoadingText>Our AI is generating your personalized learning plan...</LoadingText>
+                    <LoadingText>
+                        {restoredFromStorage
+                            ? "Loading your saved learning plan..."
+                            : "Our AI is generating your personalized learning plan..."}
+                    </LoadingText>
                     <LoadingSubText>
-                        Creating a custom AI-tailored plan for {planParams.type === 'level_based' ?
-                            `${planParams.level} level at ${planParams.currentWpm} WPM` :
-                            `${planParams.wpm} WPM`
+                        {restoredFromStorage
+                            ? "Resuming from where you left off"
+                            : `Creating a custom AI-tailored plan for ${planParams.type === 'level_based' ?
+                                `${planParams.level} level at ${planParams.currentWpm} WPM` :
+                                `${planParams.wpm} WPM`}`
                         }
                     </LoadingSubText>
                 </LoadingContainer>
@@ -347,7 +501,7 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
 
     const currentModule = modules[currentModuleIndex];
     const currentLesson = currentModule.lessons[currentLessonIndex];
-    const totalLessons = modules.reduce((sum, module) => sum + module.lessons.length, 0);
+    const totalLessons = calculateTotalLessons(modules);
     const completedLessons = modules.slice(0, currentModuleIndex).reduce((sum, module) => sum + module.lessons.length, 0) + currentLessonIndex;
     const progress = (completedLessons / totalLessons) * 100;
 
@@ -359,7 +513,7 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
                         <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
                         <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
                     </svg>
-                    AI Learning Plan
+                    AI Learning Plan {restoredFromStorage && "(Saved)"}
                 </HeaderTitle>
                 <HeaderPills>
                     <ProgressPill>
@@ -394,7 +548,7 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
             />
 
             <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                <Button onClick={onExit}>Exit Learning Plan</Button>
+                <Button onClick={handleExitWithClear}>Exit Learning Plan</Button>
             </div>
         </PlanContainer>
     );
