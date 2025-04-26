@@ -518,13 +518,15 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             {/* Conditionally render the Keyboard component based on showKeyboard prop */}
             {showKeyboard && <Keyboard nextChar={getNextChar()} />}
 
-            {/* Add live error statistics */}
+            {/* Live error statistics - temporarily disabled */}
+            {/* To re-enable, uncomment the following:
             {typingState.typingErrors && typingState.typingErrors.length > 0 && (
                 <LiveErrorStats
                     typingErrors={typingState.typingErrors}
                     showStats={showLiveStats}
                 />
             )}
+            */}
 
             <InputArea
                 ref={inputRef}
