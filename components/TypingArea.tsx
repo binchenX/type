@@ -173,6 +173,7 @@ interface TypingAreaProps {
     updateStatistics?: (expectedChar: string, typedChar: string) => void;
     onSkipForward?: () => void;
     onSkipBackward?: () => void;
+    showKeyboard?: boolean;
 }
 
 // LiveErrorStats component to display errors in real-time
@@ -238,7 +239,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     onComplete,
     updateStatistics,
     onSkipForward,
-    onSkipBackward
+    onSkipBackward,
+    showKeyboard = true
 }) => {
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -475,8 +477,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                 {renderText()}
             </TextDisplay>
 
-            {/* Add the Keyboard component here */}
-            <Keyboard nextChar={getNextChar()} />
+            {/* Conditionally render the Keyboard component based on showKeyboard prop */}
+            {showKeyboard && <Keyboard nextChar={getNextChar()} />}
 
             {/* Add live error statistics */}
             {typingState.typingErrors && typingState.typingErrors.length > 0 && (

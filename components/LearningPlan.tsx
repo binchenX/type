@@ -211,6 +211,7 @@ interface LearningPlanProps {
     planParams: LevelBasedPlanParams | AssessmentBasedPlanParams;
     onComplete: () => void;
     onExit: () => void;
+    showKeyboard?: boolean;
 }
 
 const calculateTotalLessons = (modules: Module[]): number => {
@@ -223,7 +224,8 @@ const calculateTotalLessons = (modules: Module[]): number => {
 const LearningPlan: React.FC<LearningPlanProps> = ({
     planParams,
     onComplete,
-    onExit
+    onExit,
+    showKeyboard
 }) => {
     // Log only once when component mounts or when planParams changes meaningfully
     const planParamsString = JSON.stringify(planParams);
@@ -612,6 +614,7 @@ const LearningPlan: React.FC<LearningPlanProps> = ({
                     typingState={typingState}
                     setTypingState={setTypingState}
                     onComplete={handleLessonComplete}
+                    showKeyboard={showKeyboard}
                 />
             </TypingAreaWrapper>
 

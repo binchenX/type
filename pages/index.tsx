@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import styled from 'styled-components';
 import ReactMarkdown from 'react-markdown';
@@ -9,6 +9,7 @@ import TypingArea from '@/components/TypingArea';
 import Results from '@/components/Results';
 import Stats from '@/components/Stats';
 import ThemeToggle from '@/components/ThemeToggle';
+import KeyboardToggle from '@/components/KeyboardToggle';
 import {
     loadMarkdownFile,
     fallbackContent,
@@ -205,6 +206,7 @@ export default function Home() {
         currentWpm: 0
     });
     const [shouldRestoreLearningPlan, setShouldRestoreLearningPlan] = useState(true);
+    const [showKeyboard, setShowKeyboard] = useState(true); // Add state for keyboard visibility
 
     // Load content from localStorage or public directory on initial component mount
     useEffect(() => {
@@ -643,12 +645,12 @@ export default function Home() {
 
         // First check if there's a saved learning plan we can reuse for this level
         const savedPlan = loadLearningPlan();
-        
+
         // For assessment-based plans, we should regenerate if:
         // 1. The type changes (level_based <-> assessment)
         // 2. For level_based: if level or WPM changes
         // 3. For assessment: if assessment data changes (we'll always regenerate since it's likely new data)
-        
+
         if (savedPlan) {
             if (savedPlan.planParams.type === 'level_based' && !assessmentData) {
                 // We have a saved level-based plan and no new assessment data
@@ -666,10 +668,10 @@ export default function Home() {
                 console.log('Different plan type or new assessment data available, generating new plan');
             }
         }
-        
+
         // No matching saved plan or parameters differ, create a new one
         console.log(`Creating new learning plan from assessment: level=${level}, wpm=${wpm}`);
-        
+
         // If we have assessment data, use it for more personalized learning plan
         if (assessmentData) {
             setMode('learning');
@@ -794,13 +796,34 @@ export default function Home() {
         setActiveLevel(level);
     };
 
+    // Add a function to toggle keyboard visibility
+    const toggleKeyboardVisibility = useCallback(() => {
+        setShowKeyboard(prevState => {
+            const newState = !prevState;
+            // Optionally save preference to localStorage
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('keyboard-visibility', newState ? 'visible' : 'hidden');
+            }
+            return newState;
+        });
+    }, []);
+
+    // Load keyboard visibility preference from localStorage
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const savedVisibility = localStorage.getItem('keyboard-visibility');
+            if (savedVisibility === 'hidden') {
+                setShowKeyboard(false);
+            }
+        }
+    }, []);
+
     return (
         <>
             <Head>
-                <title>Typing Practice</title>
-                <meta name="description" content="Improve your typing skills with personalized practice" />
+                <title>QType - Typing Practice with AI</title>
+                <meta name="description" content="Practice typing with AI-powered lessons tailored to your skill level" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
-                <link rel="icon" href="/favicon.ico" />
             </Head>
 
             <ToolbarContainer>
@@ -854,7 +877,13 @@ export default function Home() {
 
                 <ToolbarSpacer />
 
-                <ThemeToggle />
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <KeyboardToggle
+                        isKeyboardVisible={showKeyboard}
+                        onToggle={toggleKeyboardVisibility}
+                    />
+                    <ThemeToggle />
+                </div>
             </ToolbarContainer>
 
             <Container className="container">
@@ -910,6 +939,7 @@ export default function Home() {
                             planParams={learningPlanParams}
                             onComplete={handleLearningComplete}
                             onExit={handleExitLearning}
+                            showKeyboard={showKeyboard}
                         />
                     )}
 
@@ -945,6 +975,7 @@ export default function Home() {
                                                 updateStatistics={updateStatistics}
                                                 onSkipForward={skipCurrentItem}
                                                 onSkipBackward={moveToPreviousItem}
+                                                showKeyboard={showKeyboard}
                                             />
                                         </div>
 
