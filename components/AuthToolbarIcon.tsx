@@ -1,7 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 
-export default function AuthToolbarIcon() {
+interface AuthToolbarIconProps {
+    onSettings?: () => void;
+}
+
+export default function AuthToolbarIcon({ onSettings }: AuthToolbarIconProps) {
     const [signedIn, setSignedIn] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -40,7 +44,9 @@ export default function AuthToolbarIcon() {
 
     const handleSettings = () => {
         setMenuOpen(false);
-        router.push('/settings');
+        if (onSettings) {
+            onSettings();
+        }
     };
 
     const handleLogout = () => {

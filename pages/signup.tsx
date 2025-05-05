@@ -53,8 +53,8 @@ export default function SignupPage() {
             <Head>
                 <title>{isSignUp ? 'Sign Up' : 'Sign In'} | QType</title>
             </Head>
-            <div style={{ maxWidth: 400, margin: '100px auto', padding: 24, border: '1px solid #ccc', borderRadius: 8 }}>
-                <h2 style={{ textAlign: 'center', marginBottom: 16 }}>{isSignUp ? 'Sign Up' : 'Sign In'}</h2>
+            <div style={{ maxWidth: 500, margin: '100px auto', padding: 32, border: '1.5px solid #bbb', borderRadius: 16, fontSize: '1.5rem' }}>
+                <h2 style={{ textAlign: 'center', marginBottom: 40, fontSize: '2.7rem', fontWeight: 900 }}>{isSignUp ? 'Sign Up' : 'Sign In'}</h2>
                 <form onSubmit={handleSubmit}>
                     <input
                         value={email}
@@ -62,7 +62,7 @@ export default function SignupPage() {
                         placeholder="Email"
                         type="email"
                         required
-                        style={{ width: '100%', marginBottom: 8, padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+                        style={{ width: '100%', marginBottom: 24, padding: '22px 16px', borderRadius: 8, border: '2px solid #bbb', fontSize: '1.5rem', boxSizing: 'border-box' }}
                     />
                     <input
                         value={password}
@@ -70,24 +70,24 @@ export default function SignupPage() {
                         placeholder="Password"
                         type="password"
                         required
-                        style={{ width: '100%', marginBottom: 8, padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+                        style={{ width: '100%', marginBottom: 24, padding: '22px 16px', borderRadius: 8, border: '2px solid #bbb', fontSize: '1.5rem', boxSizing: 'border-box' }}
                     />
                     <button
                         type="submit"
                         disabled={loading}
-                        style={{ width: '100%', marginBottom: 8, padding: 10, borderRadius: 4, background: '#6366f1', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                        style={{ width: '100%', marginBottom: 24, padding: '22px 0', borderRadius: 8, background: '#6366f1', color: 'white', fontWeight: 800, border: 'none', cursor: 'pointer', fontSize: '1.4rem', letterSpacing: '0.03em' }}
                     >
                         {loading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
                     </button>
                 </form>
                 <button
                     onClick={() => setIsSignUp(s => !s)}
-                    style={{ width: '100%', marginBottom: 8, padding: 10, borderRadius: 4, background: '#f3f4f6', color: '#374151', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                    style={{ width: '100%', marginBottom: 16, padding: '18px 0', borderRadius: 8, background: '#f3f4f6', color: '#374151', fontWeight: 800, border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}
                 >
                     {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
                 </button>
-                {error && <div style={{ color: 'red', marginTop: 8 }}>{error}</div>}
-                {message && <div style={{ color: 'green', marginTop: 8 }}>{message}</div>}
+                {error && <div style={{ color: 'red', marginTop: 16, fontSize: '1.2rem' }}>{error}</div>}
+                {message && <div style={{ color: 'green', marginTop: 16, fontSize: '1.2rem' }}>{message}</div>}
             </div>
         </>
     )

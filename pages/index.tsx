@@ -11,6 +11,7 @@ import Stats from '@/components/Stats';
 import ThemeToggle from '@/components/ThemeToggle';
 import KeyboardToggle from '@/components/KeyboardToggle';
 import AuthToolbarIcon from '@/components/AuthToolbarIcon';
+import SettingsModal from '@/components/SettingsModal';
 import {
     loadMarkdownFile,
     fallbackContent,
@@ -208,7 +209,17 @@ export default function Home() {
         currentWpm: 0
     });
     const [shouldRestoreLearningPlan, setShouldRestoreLearningPlan] = useState(true);
-    const [showKeyboard, setShowKeyboard] = useState(true); // Add state for keyboard visibility
+    const [showKeyboard, setShowKeyboard] = useState(true);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const savedVisibility = localStorage.getItem('keyboard-visibility');
+            if (savedVisibility === 'hidden') {
+                setShowKeyboard(false);
+            }
+        }
+    }, []);
 
     // Load content from localStorage or public directory on initial component mount
     useEffect(() => {
@@ -810,15 +821,8 @@ export default function Home() {
         });
     }, []);
 
-    // Load keyboard visibility preference from localStorage
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const savedVisibility = localStorage.getItem('keyboard-visibility');
-            if (savedVisibility === 'hidden') {
-                setShowKeyboard(false);
-            }
-        }
-    }, []);
+    // Patch AuthToolbarIcon to open modal instead of routing
+    const handleToolbarSettings = () => setSettingsOpen(true);
 
     return (
         <>
@@ -827,6 +831,8 @@ export default function Home() {
                 <meta name="description" content="Practice typing with AI-powered lessons tailored to your skill level" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
             </Head>
+
+            {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} showKeyboard={showKeyboard} setShowKeyboard={setShowKeyboard} />}
 
             <ToolbarContainer>
                 <ToolbarGroup>
@@ -880,12 +886,9 @@ export default function Home() {
                 <ToolbarSpacer />
 
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <KeyboardToggle
-                        isKeyboardVisible={showKeyboard}
-                        onToggle={toggleKeyboardVisibility}
-                    />
-                    <ThemeToggle />
-                    <AuthToolbarIcon />
+                    {/* <KeyboardToggle isKeyboardVisible={showKeyboard} onToggle={toggleKeyboardVisibility} /> */}
+                    {/* <ThemeToggle /> */}
+                    <AuthToolbarIcon onSettings={handleToolbarSettings} />
                 </div>
             </ToolbarContainer>
 
