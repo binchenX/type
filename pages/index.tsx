@@ -25,6 +25,8 @@ import TypingAssessment from '@/components/TypingAssessment';
 import LearningPlan from '@/components/LearningPlan';
 import { LevelBasedPlanParams, AssessmentBasedPlanParams } from '@/services/llmService';
 import { loadLearningPlan, clearLearningPlan } from '@/utils/learningStorage';
+import { useRouter } from 'next/router';
+import { useTheme } from 'next-themes';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -211,6 +213,19 @@ export default function Home() {
     const [shouldRestoreLearningPlan, setShouldRestoreLearningPlan] = useState(true);
     const [showKeyboard, setShowKeyboard] = useState(true);
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [signInModalOpen, setSignInModalOpen] = useState(false);
+    const router = useRouter();
+    const { resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    // Theme-based styles
+    const isDark = resolvedTheme === 'dark';
+    const modalBg = isDark ? '#181a20' : '#fff';
+    const textColor = isDark ? '#f3f4f6' : '#222';
+    const labelColor = isDark ? '#e5e7eb' : '#374151';
+    const buttonBg = isDark ? '#23262f' : '#e5e7eb';
+    const buttonColor = isDark ? '#f3f4f6' : '#222';
+    const closeButtonColor = isDark ? '#aaa' : '#888';
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -219,6 +234,23 @@ export default function Home() {
                 setShowKeyboard(false);
             }
         }
+    }, []);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // Show sign-in modal after 3 seconds if not signed in and hasn't chosen to stay logged out
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            const isSignedIn = localStorage.getItem('qtype_signed_in');
+            const hasChosenStayLoggedOut = localStorage.getItem('qtype_stay_logged_out');
+            if (!isSignedIn && !hasChosenStayLoggedOut) {
+                setSignInModalOpen(true);
+            }
+        }, 3000);
+
+        return () => clearTimeout(timer);
     }, []);
 
     // Load content from localStorage or public directory on initial component mount
@@ -833,6 +865,99 @@ export default function Home() {
             </Head>
 
             {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} showKeyboard={showKeyboard} setShowKeyboard={setShowKeyboard} />}
+            {mounted && signInModalOpen && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100vw',
+                    height: '100vh',
+                    background: isDark ? 'rgba(0,0,0,0.65)' : 'rgba(0,0,0,0.35)',
+                    zIndex: 10000,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}>
+                    <div style={{
+                        background: modalBg,
+                        color: textColor,
+                        borderRadius: 24,
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                        width: 420,
+                        maxWidth: '95vw',
+                        padding: '48px 32px 32px 32px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        position: 'relative',
+                    }}>
+                        <button
+                            onClick={() => setSignInModalOpen(false)}
+                            style={{
+                                position: 'absolute',
+                                top: 18,
+                                right: 18,
+                                background: 'none',
+                                border: 'none',
+                                fontSize: 28,
+                                fontWeight: 700,
+                                color: closeButtonColor,
+                                cursor: 'pointer',
+                                padding: 0,
+                                lineHeight: 1,
+                            }}
+                            aria-label="Close sign in modal"
+                        >
+                            ×
+                        </button>
+                        <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 16, textAlign: 'center', color: textColor }}>Welcome back</h2>
+                        <div style={{ fontSize: '1.15rem', color: labelColor, marginBottom: 32, textAlign: 'center', maxWidth: 340 }}>
+                            Log in or sign up for more personalization.
+                        </div>
+                        <button
+                            onClick={() => router.push('/signup')}
+                            style={{
+                                width: '100%',
+                                background: isDark ? '#23262f' : '#111',
+                                color: '#f3f4f6',
+                                border: 'none',
+                                borderRadius: 9999,
+                                padding: '16px 0',
+                                fontWeight: 700,
+                                fontSize: '1.2rem',
+                                marginBottom: 16,
+                                boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                                borderTop: '3px solid ' + (isDark ? '#181a20' : '#fff'),
+                                borderBottom: '3px solid ' + (isDark ? '#181a20' : '#fff'),
+                                transition: 'background 0.15s',
+                                cursor: 'pointer',
+                            }}
+                            onMouseOver={e => { if (isDark) e.currentTarget.style.background = '#353945'; }}
+                            onMouseOut={e => { if (isDark) e.currentTarget.style.background = '#23262f'; }}
+                        >
+                            Log in
+                        </button>
+                        <button
+                            onClick={() => {
+                                localStorage.setItem('qtype_stay_logged_out', '1');
+                                setSignInModalOpen(false);
+                            }}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: isDark ? '#e5e7eb' : labelColor,
+                                textDecoration: 'underline',
+                                fontWeight: 600,
+                                fontSize: '1rem',
+                                cursor: 'pointer',
+                                marginTop: 8,
+                            }}
+                        >
+                            Stay logged out
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <ToolbarContainer>
                 <ToolbarGroup>
@@ -886,9 +1011,7 @@ export default function Home() {
                 <ToolbarSpacer />
 
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                    {/* <KeyboardToggle isKeyboardVisible={showKeyboard} onToggle={toggleKeyboardVisibility} /> */}
-                    {/* <ThemeToggle /> */}
-                    <AuthToolbarIcon onSettings={handleToolbarSettings} />
+                    <AuthToolbarIcon onSettings={handleToolbarSettings} onSignInModal={() => setSignInModalOpen(true)} />
                 </div>
             </ToolbarContainer>
 

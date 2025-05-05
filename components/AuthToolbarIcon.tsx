@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 
 interface AuthToolbarIconProps {
     onSettings?: () => void;
+    onSignInModal?: () => void;
 }
 
 export default function AuthToolbarIcon({ onSettings }: AuthToolbarIconProps) {
@@ -34,12 +35,30 @@ export default function AuthToolbarIcon({ onSettings }: AuthToolbarIconProps) {
         };
     }, [menuOpen]);
 
+    if (!signedIn) {
+        return (
+            <button
+                onClick={() => router.push('/signup')}
+                style={{
+                    background: '#111',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 9999,
+                    padding: '8px 24px',
+                    fontWeight: 600,
+                    fontSize: '1.1rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                    marginLeft: 8,
+                }}
+            >
+                Log in
+            </button>
+        );
+    }
+
     const handleIconClick = () => {
-        if (signedIn) {
-            setMenuOpen((open) => !open);
-        } else {
-            router.push('/signup');
-        }
+        setMenuOpen((open) => !open);
     };
 
     const handleSettings = () => {
@@ -60,17 +79,11 @@ export default function AuthToolbarIcon({ onSettings }: AuthToolbarIconProps) {
             <button
                 onClick={handleIconClick}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: 8 }}
-                title={signedIn ? 'Settings' : 'Login'}
+                title={'Settings'}
             >
-                {signedIn ? (
-                    // Settings gear icon
-                    <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09c.29.02.57.1.82.21.25.12.48.28.68.48.2.2.36.43.48.68.11.25.19.53.21.82V4.6a1.65 1.65 0 0 0 1.51 1c.29.02.57.1.82.21.25.12.48.28.68.48.2.2.36.43.48.68.11.25.19.53.21.82V8a1.65 1.65 0 0 0 1 1.51z" /></svg>
-                ) : (
-                    // Login user icon
-                    <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-8 0v2" /><circle cx="12" cy="7" r="4" /></svg>
-                )}
+                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09c.29.02.57.1.82.21.25.12.48.28.68.48.2.2.36.43.48.68.11.25.19.53.21.82V4.6a1.65 1.65 0 0 0 1.51 1c.29.02.57.1.82.21.25.12.48.28.68.48.2.2.36.43.48.68.11.25.19.53.21.82V8a1.65 1.65 0 0 0 1 1.51z" /></svg>
             </button>
-            {signedIn && menuOpen && (
+            {menuOpen && (
                 <div style={{
                     position: 'absolute',
                     right: 0,
