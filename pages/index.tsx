@@ -10,6 +10,7 @@ import Results from '@/components/Results';
 import Stats from '@/components/Stats';
 import ThemeToggle from '@/components/ThemeToggle';
 import KeyboardToggle from '@/components/KeyboardToggle';
+import AuthToolbarIcon from '@/components/AuthToolbarIcon';
 import {
     loadMarkdownFile,
     fallbackContent,
@@ -58,8 +59,9 @@ const ToolbarContainer = styled.div`
   border-radius: 8px;
   margin-bottom: 2rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow-x: auto;
+  overflow: visible;
   border: 1px solid var(--border);
+  z-index: 10;
 `;
 
 const ToolbarDivider = styled.div`
@@ -883,6 +885,7 @@ export default function Home() {
                         onToggle={toggleKeyboardVisibility}
                     />
                     <ThemeToggle />
+                    <AuthToolbarIcon />
                 </div>
             </ToolbarContainer>
 
